@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/rpc"
 	"os"
 	"time"
 
@@ -14,7 +16,11 @@ import (
 	"github.com/obynonwane/inventory-service/data"
 )
 
-const webPort = "80"
+const (
+	webPort  = "80"
+	rpcPort  = "5001"
+	gRpcPort = "50001"
+)
 
 var counts int64
 
@@ -32,11 +38,28 @@ func main() {
 		log.Panic("can't connect to Postgres")
 	}
 
-	//setup config
+	// //setup config
+	// app := Config{
+	// 	Repo: data.NewPostgresRepository(conn),
+	// }
+
+	// Setup config with an initialized Repo
 	app := Config{
 		Repo: data.NewPostgresRepository(conn),
 	}
 
+	// Pass the initialized Config to RPCServer
+	rpcServer := &RPCServer{
+		App: &app,
+	}
+
+	// Register RPC server
+	err := rpc.Register(rpcServer)
+	if err != nil {
+		log.Panic("failed to register RPC server:", err)
+	}
+	go app.rpcListen()
+	
 	// define http server
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", webPort),
@@ -44,7 +67,7 @@ func main() {
 	}
 
 	// start the server
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	if err != nil {
 		log.Panic(err)
 	}
@@ -104,4 +127,27 @@ func connectToDB() *sql.DB {
 func (app *Config) setupRepo(conn *sql.DB) {
 	db := data.NewPostgresRepository(conn)
 	app.Repo = db
+}
+
+func (app *Config) rpcListen() error {
+	log.Println("starting RPC server on port", rpcPort)
+	listen, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", rpcPort))
+	if err != nil {
+		return err
+	}
+
+	// schduled to be executed after the execution of the rpcListen
+	defer listen.Close()
+
+	// a loop that executes forever that keeps listenning for connection
+	for {
+		rpcConn, err := listen.Accept()
+		if err != nil {
+			return err
+		}
+
+		// start the rpcConn in a different thread using goroutine to avoid waiting
+		// in line for other processes to complete
+		go rpc.ServeConn(rpcConn)
+	}
 }

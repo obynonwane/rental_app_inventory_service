@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 /* returns http.Handler*/
@@ -22,6 +23,8 @@ func (app *Config) routes() http.Handler {
 	}))
 
 	mux.Get("/api/v1/getusers", app.GetUsers)
+	// Add the Prometheus metrics endpoint to the router
+	mux.Handle("/metrics", promhttp.Handler())
 
 	return mux
 }

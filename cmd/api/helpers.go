@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type jsonResponse struct {
@@ -78,4 +80,8 @@ func (app *Config) errorJSON(w http.ResponseWriter, err error, data any, status 
 	payload.Data = data
 
 	return app.writeJSON(w, statusCode, payload)
+}
+
+func (app *Config) generateUniqueFilename(ext string) string {
+	return fmt.Sprintf("%d.%s", time.Now().UnixNano(), ext)
 }

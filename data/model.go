@@ -24,9 +24,7 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	}
 }
 
-func (u *PostgresRepository) GetAll() ([]*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-	defer cancel()
+func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
 
 	query := `SELECT id, email, first_name, last_name, password, verified, updated_at, created_at FROM users`
 

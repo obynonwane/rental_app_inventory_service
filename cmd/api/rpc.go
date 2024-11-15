@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"time"
+
 	"github.com/obynonwane/inventory-service/data"
 )
 
@@ -9,16 +12,14 @@ type RPCServer struct {
 	App *Config
 }
 
-// 2. define the kind of payload you would receive from RPC - payload type
-type RPCPayload struct {
-	Name string
-	Data string
-}
-
 // 3. write methods we want to expose via RPC
 func (r *RPCServer) RetrieveUsers(_ struct{}, resp *([]*data.User)) error {
 
-	users, err := r.App.Repo.GetAll()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+
+	defer cancel()
+
+	users, err := r.App.Repo.GetAll(ctx)
 
 	if err != nil {
 		return err

@@ -38,11 +38,6 @@ func main() {
 		log.Panic("can't connect to Postgres")
 	}
 
-	// //setup config
-	// app := Config{
-	// 	Repo: data.NewPostgresRepository(conn),
-	// }
-
 	// Setup config with an initialized Repo
 	app := Config{
 		Repo: data.NewPostgresRepository(conn),
@@ -53,13 +48,15 @@ func main() {
 		App: &app,
 	}
 
-	// Register RPC server
+	// Register RPC server: tell teh app e will be accepting rpc request
 	err := rpc.Register(rpcServer)
 	if err != nil {
 		log.Panic("failed to register RPC server:", err)
 	}
-	go app.rpcListen()
-	
+
+	//register gRPC: and start listening
+	go app.grpcListen()
+
 	// define http server
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", webPort),

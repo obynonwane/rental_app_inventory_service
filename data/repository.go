@@ -1,5 +1,7 @@
 package data
 
+import "context"
+
 type Repository interface {
-	GetAll() ([]*User, error)
+	GetAll(ctx context.Context) ([]*User, error)
 }

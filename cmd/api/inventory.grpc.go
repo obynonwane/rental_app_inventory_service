@@ -141,6 +141,7 @@ func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequ
 	// Create a channel to signal completion of the async task
 	userChannel := make(chan []*data.User)
 	errorChannel := make(chan error)
+	
 
 	// Create a context with a timeout for the asynchronous task
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration

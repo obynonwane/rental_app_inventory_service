@@ -136,7 +136,12 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 // 	return response, nil
 
 // }
-
+func formatTimestamp(ts *timestamppb.Timestamp) string {
+	if ts == nil {
+		return ""
+	}
+	return ts.AsTime().Format("2006-01-02 15:04:05") // Custom human-readable format
+}
 func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.EmptyRequest) (*inventory.AllCategoryResponse, error) {
 
 	categoriesChannel := make(chan []*data.Category)
@@ -164,13 +169,16 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 
 		// loop and push response to above array
 		for _, category := range categories {
+
 			singleCategory := &inventory.CategoryResponse{
-				Id:          category.ID,
-				Name:        category.Name,
-				Description: category.Description,
-				IconClass:   category.IconClass,
-				CreatedAt:   timestamppb.New(category.CreatedAt),
-				UpdatedAt:   timestamppb.New(category.UpdatedAt),
+				Id:             category.ID,
+				Name:           category.Name,
+				Description:    category.Description,
+				IconClass:      category.IconClass,
+				CreatedAt:      timestamppb.New(category.CreatedAt),
+				UpdatedAt:      timestamppb.New(category.UpdatedAt),
+				CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
 			}
 
 			allCategories = append(allCategories, singleCategory)

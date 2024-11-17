@@ -137,11 +137,63 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 
 // }
 
+func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.EmptyRequest) (*inventory.AllCategoryResponse, error) {
+
+	categoriesChannel := make(chan []*data.Category)
+	errorChannel := make(chan error)
+
+	// create a context with a timeout for the asynchronous task
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	go func() {
+		categories, err := i.Models.GetAllCategory(timeoutCtx)
+		if err != nil {
+			errorChannel <- err // Send error to the error channel
+			return
+		}
+
+		categoriesChannel <- categories
+	}()
+
+	select {
+	case categories := <-categoriesChannel:
+
+		// declare a map of type inventory category response of model type mismatch with the proto message type
+		var allCategories []*inventory.CategoryResponse
+
+		// loop and push response to above array
+		for _, category := range categories {
+			singleCategory := &inventory.CategoryResponse{
+				Id:          category.ID,
+				Name:        category.Name,
+				Description: category.Description,
+				IconClass:   category.IconClass,
+				CreatedAt:   timestamppb.New(category.CreatedAt),
+				UpdatedAt:   timestamppb.New(category.UpdatedAt),
+			}
+
+			allCategories = append(allCategories, singleCategory)
+		}
+
+		return &inventory.AllCategoryResponse{
+			Categories: allCategories,
+		}, nil
+
+	case err := <-errorChannel:
+		return nil, fmt.Errorf("failed to retrieve categories: %v", err)
+
+	case <-timeoutCtx.Done():
+		// If the operation timed out, return a timeout error
+		return nil, fmt.Errorf("request timed out while fetching categories")
+	}
+
+}
+
 func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequest) (*inventory.UserListResponse, error) {
 	// Create a channel to signal completion of the async task
 	userChannel := make(chan []*data.User)
 	errorChannel := make(chan error)
-	
 
 	// Create a context with a timeout for the asynchronous task
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration

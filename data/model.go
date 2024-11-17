@@ -58,3 +58,40 @@ func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
 
 	return users, nil
 }
+
+func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, error) {
+	// make the query script
+	query := `SELECT id, name, description, icon_class, updated_at, created_at FROM categories`
+
+	rows, err := u.Conn.QueryContext(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var categories []*Category
+
+	for rows.Next() {
+		var category Category
+		err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Description,
+			&category.IconClass,
+			&category.UpdatedAt,
+			&category.CreatedAt,
+		)
+
+		if err != nil {
+			log.Println("Error scanning", err)
+		}
+
+		categories = append(categories, &category)
+
+	}
+
+	return categories, nil
+
+}

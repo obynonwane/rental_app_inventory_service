@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -28,10 +28,11 @@ type InventoryServer struct {
 
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
 
-	imagesDir := "inventory-service/uploads"
-	os.MkdirAll(imagesDir, os.ModePerm)
-
-	cld, err := cloudinary.NewFromParams(os.Getenv("CLOUDINARY_CLOUD_NAME"), os.Getenv("CLOUDINARY_API_KEY"), os.Getenv("CLOUDINARY_API_SECRET"))
+	cld, err := cloudinary.NewFromParams(
+		os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		os.Getenv("CLOUDINARY_API_KEY"),
+		os.Getenv("CLOUDINARY_API_SECRET"),
+	)
 	if err != nil {
 		return &inventory.CreateInventoryResponse{
 			Message:    "Failed to initialize Cloudinary",
@@ -40,69 +41,57 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		}, err
 	}
 
-	// Launch a goroutine to process images asynchronously
 	go func() {
+		var urls []string
 		var wg sync.WaitGroup
+
 		for _, image := range req.Images {
 			wg.Add(1)
 			go func(img *inventory.ImageData) {
 				defer wg.Done()
 
-				// Create a new context for the Cloudinary upload to avoid cancellation issues
-				uploadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // Set a sufficient timeout for the upload
+				uploadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 				defer cancel()
 
-				// Determine file extension based on MIME type
-				var ext string
+				// Validate MIME type and map to Cloudinary's expected format
 				switch img.ImageType {
-				case "image/jpeg":
-					ext = "jpg"
-				case "image/png":
-					ext = "png"
-				case "image/gif":
-					ext = "gif"
+				case "image/jpeg", "image/png", "image/gif": // Supported types
+					// Generate unique filename (without extension)
+					uniqueFilename := i.App.generateUniqueFilename()
+
+					// Upload directly from byte stream to Cloudinary
+					uploadResult, err := cld.Upload.Upload(uploadCtx, bytes.NewReader(img.ImageData), uploader.UploadParams{
+						Folder:   "rentalsolution/inventories",
+						PublicID: uniqueFilename, // Pass filename without extension
+					})
+					if err != nil {
+						log.Printf("Error uploading to Cloudinary: %v", err)
+						return
+					}
+
+					// Append the Cloudinary URL in a thread-safe manner
+					i.App.mu.Lock()
+					urls = append(urls, uploadResult.SecureURL)
+					i.App.mu.Unlock()
+
 				default:
 					log.Printf("Unsupported image format: %s", img.ImageType)
 					return
 				}
-
-				uniqueFilename := i.App.generateUniqueFilename(ext)
-				filePath := filepath.Join(imagesDir, uniqueFilename)
-
-				// Save the file locally
-				err := os.WriteFile(filePath, img.ImageData, 0644)
-				if err != nil {
-					log.Printf("Error saving image: %v", err)
-					return
-				}
-
-				// Upload to Cloudinary with the new context
-				uploadResult, err := cld.Upload.Upload(uploadCtx, filePath, uploader.UploadParams{
-					Folder:   "rentalsolution/inventories", // Optional folder name in Cloudinary
-					PublicID: uniqueFilename,
-				})
-				if err != nil {
-					log.Printf("Error uploading to Cloudinary: %v", err)
-					return
-				}
-
-				// Store the Cloudinary URL in the database
-				log.Println("Cloudinary upload successful, URL: ", uploadResult.SecureURL)
-
-				// Clean up local file after upload
-				os.Remove(filePath)
 			}(image)
 		}
 
-		// Wait for all uploads to complete
 		wg.Wait()
-		log.Println("All images have been uploaded to Cloudinary and URLs stored in the database.")
+
+		log.Println(urls, "the urls")
+
+		// Save product details and images in the database (if applicable)
 	}()
 
-	// Return success response
+	// Immediately return success response to the user
 	return &inventory.CreateInventoryResponse{
-		Message:    "Inventory created successfully",
-		StatusCode: 200,
+		Message:    "Inventory creation request received. Processing images in the background.",
+		StatusCode: 202, // 202 Accepted since the processing is asynchronous
 		Error:      false,
 	}, nil
 }

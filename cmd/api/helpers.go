@@ -84,8 +84,8 @@ func (app *Config) errorJSON(w http.ResponseWriter, err error, data any, status 
 	return app.writeJSON(w, statusCode, payload)
 }
 
-func (app *Config) generateUniqueFilename(ext string) string {
-	return fmt.Sprintf("%d.%s", time.Now().UnixNano(), ext)
+func (app *Config) generateUniqueFilename() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func formatTimestamp(ts *timestamppb.Timestamp) string {

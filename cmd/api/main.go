@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"sync"
 	"time"
 
 	_ "github.com/jackc/pgconn"
@@ -26,6 +27,7 @@ var counts int64
 
 type Config struct {
 	Repo data.Repository
+	mu   sync.Mutex
 }
 
 func main() {

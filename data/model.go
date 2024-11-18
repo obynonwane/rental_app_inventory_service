@@ -3,6 +3,8 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 )
@@ -94,4 +96,70 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 
 	return categories, nil
 
+}
+func (u *PostgresRepository) GetAllSubCategory(ctx context.Context) ([]*Subcategory, error) {
+	// make the query script
+	query := `SELECT id, category_id, name, description, icon_class, updated_at, created_at FROM subcategories`
+
+	rows, err := u.Conn.QueryContext(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var subCategories []*Subcategory
+
+	for rows.Next() {
+		var subCategory Subcategory
+		err := rows.Scan(
+			&subCategory.ID,
+			&subCategory.CategoryId,
+			&subCategory.Name,
+			&subCategory.Description,
+			&subCategory.IconClass,
+			&subCategory.UpdatedAt,
+			&subCategory.CreatedAt,
+		)
+
+		if err != nil {
+			log.Println("Error scanning", err)
+		}
+
+		subCategories = append(subCategories, &subCategory)
+
+	}
+
+	return subCategories, nil
+}
+
+func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
+
+	// query to select
+	query := `SELECT id, name, description, icon_class, updated_at, created_at FROM categories WHERE id = $1`
+
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var category Category
+
+	err := row.Scan(
+		&category.ID,
+		&category.Name,
+		&category.Description,
+		&category.IconClass,
+		&category.UpdatedAt,
+		&category.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Handle case where no category is found for the given ID
+			return nil, fmt.Errorf("no category found with ID %s", id)
+		}
+		// Handle other possible errors
+		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
+	}
+
+	return &category, nil
 }

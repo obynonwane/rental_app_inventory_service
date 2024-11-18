@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type jsonResponse struct {
@@ -84,4 +86,11 @@ func (app *Config) errorJSON(w http.ResponseWriter, err error, data any, status 
 
 func (app *Config) generateUniqueFilename(ext string) string {
 	return fmt.Sprintf("%d.%s", time.Now().UnixNano(), ext)
+}
+
+func formatTimestamp(ts *timestamppb.Timestamp) string {
+	if ts == nil {
+		return ""
+	}
+	return ts.AsTime().Format("2006-01-02 15:04:05") // Custom human-readable format
 }

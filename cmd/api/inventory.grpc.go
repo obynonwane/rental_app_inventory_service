@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -136,12 +137,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 // 	return response, nil
 
 // }
-func formatTimestamp(ts *timestamppb.Timestamp) string {
-	if ts == nil {
-		return ""
-	}
-	return ts.AsTime().Format("2006-01-02 15:04:05") // Custom human-readable format
-}
+
 func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.EmptyRequest) (*inventory.AllCategoryResponse, error) {
 
 	categoriesChannel := make(chan []*data.Category)
@@ -175,8 +171,6 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 				Name:           category.Name,
 				Description:    category.Description,
 				IconClass:      category.IconClass,
-				CreatedAt:      timestamppb.New(category.CreatedAt),
-				UpdatedAt:      timestamppb.New(category.UpdatedAt),
 				CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
 			}
@@ -186,6 +180,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 
 		return &inventory.AllCategoryResponse{
 			Categories: allCategories,
+			StatusCode: http.StatusOK,
 		}, nil
 
 	case err := <-errorChannel:
@@ -196,6 +191,103 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 		return nil, fmt.Errorf("request timed out while fetching categories")
 	}
 
+}
+
+func (i *InventoryServer) GetSubCategories(ctx context.Context, req *inventory.EmptyRequest) (*inventory.AllSubCategoryResponse, error) {
+
+	subCategoriesChannel := make(chan []*data.Subcategory)
+	errorChannel := make(chan error)
+
+	// create a context with a timeout for the asynchronous task
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	go func() {
+		subCategories, err := i.Models.GetAllSubCategory(timeoutCtx)
+		if err != nil {
+			errorChannel <- err // Send error to the error channel
+			return
+		}
+
+		subCategoriesChannel <- subCategories
+	}()
+
+	select {
+	case subCategories := <-subCategoriesChannel:
+
+		// declare a map of type inventory category response of model type mismatch with the proto message type
+		var allSubCategories []*inventory.SubCategoryResponse
+
+		// loop and push response to above array
+		for _, subCategory := range subCategories {
+
+			singleSubCategory := &inventory.SubCategoryResponse{
+				Id:             subCategory.ID,
+				Name:           subCategory.Name,
+				CategoryId:     subCategory.CategoryId,
+				Description:    subCategory.Description,
+				IconClass:      subCategory.IconClass,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
+			}
+
+			allSubCategories = append(allSubCategories, singleSubCategory)
+		}
+
+		return &inventory.AllSubCategoryResponse{
+			Subcategories: allSubCategories,
+			StatusCode:    http.StatusOK,
+		}, nil
+
+	case err := <-errorChannel:
+		return nil, fmt.Errorf("failed to retrieve subcategories: %v", err)
+
+	case <-timeoutCtx.Done():
+		// If the operation timed out, return a timeout error
+		return nil, fmt.Errorf("request timed out while fetching subcategories")
+	}
+
+}
+
+func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.ResourceId) (*inventory.CategoryResponse, error) {
+
+	// intantiate response and error channels
+	categoryChannel := make(chan *data.Category)
+	erroChannel := make(chan error)
+
+	//create a context with timeout for asynchronous operation
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// start go routin for asynchronous execution
+	go func() {
+		data, err := i.Models.GetcategoryByID(ctx, req.Id)
+		if err != nil {
+			erroChannel <- err
+			return
+		}
+
+		categoryChannel <- data
+	}()
+
+	select {
+	case category := <-categoryChannel:
+		return &inventory.CategoryResponse{
+			Id:             category.ID,
+			Name:           category.Name,
+			Description:    category.Description,
+			IconClass:      category.IconClass,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
+			StatusCode:     http.StatusOK,
+		}, nil
+
+	case err := <-erroChannel:
+		return nil, fmt.Errorf("failed to retrieve category: %v", err)
+
+	case <-timeoutCtx.Done():
+		return nil, fmt.Errorf("request timed out while fetching subcategories")
+	}
 }
 
 func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequest) (*inventory.UserListResponse, error) {
@@ -223,14 +315,15 @@ func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequ
 		// Process the users and prepare the response
 		var inventoryUsers []*inventory.User
 		for _, user := range users {
+
 			invUser := &inventory.User{
-				Id:        user.ID,
-				Email:     user.Email,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-				Verified:  user.Verified,
-				CreatedAt: timestamppb.New(user.CreatedAt),
-				UpdatedAt: timestamppb.New(user.UpdatedAt),
+				Id:             user.ID,
+				Email:          user.Email,
+				FirstName:      user.FirstName,
+				LastName:       user.LastName,
+				Verified:       user.Verified,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
 			}
 			inventoryUsers = append(inventoryUsers, invUser)
 		}

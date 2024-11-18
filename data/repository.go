@@ -7,4 +7,5 @@ type Repository interface {
 	GetAllCategory(ctx context.Context) ([]*Category, error)
 	GetAllSubCategory(ctx context.Context) ([]*Subcategory, error)
 	GetcategoryByID(ctx context.Context, id string) (*Category, error)
+	GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error)
 }

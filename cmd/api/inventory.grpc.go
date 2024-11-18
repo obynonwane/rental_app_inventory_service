@@ -248,6 +248,61 @@ func (i *InventoryServer) GetSubCategories(ctx context.Context, req *inventory.E
 	}
 
 }
+func (i *InventoryServer) GetCategorySubcategories(ctx context.Context, req *inventory.ResourceId) (*inventory.AllSubCategoryResponse, error) {
+
+	subCategoriesChannel := make(chan []*data.Subcategory)
+	errorChannel := make(chan error)
+
+	// create a context with a timeout for the asynchronous task
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	go func() {
+		subCategories, err := i.Models.GetcategorySubcategories(timeoutCtx, req.Id)
+		if err != nil {
+			errorChannel <- err // Send error to the error channel
+			return
+		}
+
+		subCategoriesChannel <- subCategories
+	}()
+
+	select {
+	case subCategories := <-subCategoriesChannel:
+
+		// declare a map of type inventory category response of model type mismatch with the proto message type
+		var allSubCategories []*inventory.SubCategoryResponse
+
+		// loop and push response to above array
+		for _, subCategory := range subCategories {
+
+			singleSubCategory := &inventory.SubCategoryResponse{
+				Id:             subCategory.ID,
+				Name:           subCategory.Name,
+				CategoryId:     subCategory.CategoryId,
+				Description:    subCategory.Description,
+				IconClass:      subCategory.IconClass,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
+			}
+
+			allSubCategories = append(allSubCategories, singleSubCategory)
+		}
+
+		return &inventory.AllSubCategoryResponse{
+			Subcategories: allSubCategories,
+			StatusCode:    http.StatusOK,
+		}, nil
+
+	case err := <-errorChannel:
+		return nil, fmt.Errorf("failed to retrieve subcategories: %v", err)
+
+	case <-timeoutCtx.Done():
+		// If the operation timed out, return a timeout error
+		return nil, fmt.Errorf("request timed out while fetching subcategories")
+	}
+
+}
 
 func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.ResourceId) (*inventory.CategoryResponse, error) {
 

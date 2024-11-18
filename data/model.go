@@ -133,6 +133,42 @@ func (u *PostgresRepository) GetAllSubCategory(ctx context.Context) ([]*Subcateg
 
 	return subCategories, nil
 }
+func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error) {
+	// make the query script
+	query := `SELECT id, category_id, name, description, icon_class, updated_at, created_at FROM subcategories where category_id = $1`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var subCategories []*Subcategory
+
+	for rows.Next() {
+		var subCategory Subcategory
+		err := rows.Scan(
+			&subCategory.ID,
+			&subCategory.CategoryId,
+			&subCategory.Name,
+			&subCategory.Description,
+			&subCategory.IconClass,
+			&subCategory.UpdatedAt,
+			&subCategory.CreatedAt,
+		)
+
+		if err != nil {
+			log.Println("Error scanning", err)
+		}
+
+		subCategories = append(subCategories, &subCategory)
+
+	}
+
+	return subCategories, nil
+}
 
 func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
 

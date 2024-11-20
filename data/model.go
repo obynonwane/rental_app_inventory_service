@@ -215,7 +215,7 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 	start := time.Now()
 	log.Println("Inside Get subcategory Query")
 	// query to select
-	query := `SELECT id, name, category_id, description, icon_class, updated_at, created_at FROM subcategories WHERE id = $1`
+	query := `SELECT id, category_id, name, description, icon_class, updated_at, created_at FROM subcategories WHERE id = $1`
 
 	row := u.Conn.QueryRowContext(ctx, query, id)
 

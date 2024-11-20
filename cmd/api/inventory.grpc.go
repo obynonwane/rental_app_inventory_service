@@ -29,97 +29,148 @@ type InventoryServer struct {
 }
 
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
-	// Validate category and subcategory sequentially
-	_, catErr := i.Models.GetcategoryByID(ctx, req.CategoryId)
+
+	var wg sync.WaitGroup
+	catErrCh := make(chan error, 1)             // Buffered to avoid blocking
+	subCatErrCh := make(chan error, 1)          // Buffered to avoid blocking
+	subCatCh := make(chan *data.Subcategory, 1) // Buffered to avoid blocking
+
+	// Validate category
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, catErr := i.Models.GetcategoryByID(ctx, req.CategoryId)
+		catErrCh <- catErr // Write the error or nil
+	}()
+
+	// Validate subcategory
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		subcategory, subCatErr := i.Models.GetSubcategoryByID(ctx, req.SubCategoryId)
+		subCatErrCh <- subCatErr // Write the error or nil
+		subCatCh <- subcategory  // Write the subcategory or nil
+	}()
+
+	// Wait for both goroutines to finish
+	wg.Wait()
+
+	// Close channels after all goroutines finish writing
+	close(catErrCh)
+	close(subCatErrCh)
+	close(subCatCh)
+
+	// Read category validation error
+	catErr := <-catErrCh
 	if catErr != nil {
-		return nil, fmt.Errorf("invalid category ID: %v", catErr)
+		return nil, fmt.Errorf("error validating category: %v", catErr)
 	}
 
-	_, subCatErr := i.Models.GetSubcategoryByID(ctx, req.SubCategoryId)
+	// Read subcategory validation error
+	subCatErr := <-subCatErrCh
 	if subCatErr != nil {
-		return nil, fmt.Errorf("invalid subcategory ID: %v", subCatErr)
+		return nil, fmt.Errorf("error validating subcategory: %v", subCatErr)
 	}
 
-	// Initialize Cloudinary
+	// Read and validate subcategory
+	subcategory := <-subCatCh
+	if subcategory == nil {
+		return nil, fmt.Errorf("subcategory not found")
+	}
+
+	if subcategory.CategoryId != req.CategoryId {
+		return nil, fmt.Errorf("subcategory does not belong to category")
+	}
+
+	// Increase the timeout duration for Cloudinary initialization and image uploads
 	cld, err := cloudinary.NewFromParams(
 		os.Getenv("CLOUDINARY_CLOUD_NAME"),
 		os.Getenv("CLOUDINARY_API_KEY"),
 		os.Getenv("CLOUDINARY_API_SECRET"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Cloudinary: %v", err)
+		return &inventory.CreateInventoryResponse{
+			Message:    "Failed to initialize Cloudinary",
+			StatusCode: 500,
+			Error:      true,
+		}, err
 	}
 
-	// Upload images concurrently and collect results
-	var urls []string
-	uploadErrors := make(chan error, len(req.Images)) // buffered channel of size image length
-	var mu sync.Mutex                                 // for synchronisation to avoid race condition
-	var wg sync.WaitGroup                             // wait group to wait for all goroutines to be executed before proceeding
+	go func() {
+		var urls []string
+		var wg sync.WaitGroup
 
-	for _, image := range req.Images {
-		wg.Add(1)
-		go func(img *inventory.ImageData) {
-			defer wg.Done()
+		for _, image := range req.Images {
+			wg.Add(1)
+			go func(img *inventory.ImageData) {
+				defer wg.Done()
 
-			uploadCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-			defer cancel()
+				uploadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // Increased timeout for image upload
+				defer cancel()
 
-			// Generate unique filename
-			uniqueFilename := i.App.generateUniqueFilename()
+				// Validate MIME type and map to Cloudinary's expected format
+				switch img.ImageType {
+				case "image/jpeg", "image/png", "image/gif": // Supported types
+					// Generate unique filename (without extension)
+					uniqueFilename := i.App.generateUniqueFilename()
 
-			// Upload to Cloudinary
-			uploadResult, err := cld.Upload.Upload(uploadCtx, bytes.NewReader(img.ImageData), uploader.UploadParams{
-				Folder:   "rentalsolution/inventories",
-				PublicID: uniqueFilename,
-			})
-			if err != nil {
-				uploadErrors <- fmt.Errorf("failed to upload image: %v", err)
-				return
+					// Upload directly from byte stream to Cloudinary
+					uploadResult, err := cld.Upload.Upload(uploadCtx, bytes.NewReader(img.ImageData), uploader.UploadParams{
+						Folder:   "rentalsolution/inventories",
+						PublicID: uniqueFilename, // Pass filename without extension
+					})
+					if err != nil {
+						log.Printf("Error uploading to Cloudinary: %v", err)
+						return
+					}
+
+					var mu sync.Mutex
+					// Append the Cloudinary URL in a thread-safe manner
+					mu.Lock()
+					urls = append(urls, uploadResult.SecureURL)
+					mu.Unlock()
+
+				default:
+					log.Printf("Unsupported image format: %s", img.ImageType)
+					return
+				}
+			}(image)
+		}
+
+		wg.Wait()
+
+		dbCtx, cancel := context.WithTimeout(context.Background(), 15*time.Minute) // Increased timeout for DB transaction
+		defer cancel()
+
+		// Prepare for transaction
+		tx, err := i.Models.BeginTransaction(dbCtx)
+		if err != nil {
+			log.Println(fmt.Errorf("failed to begin transaction: %v", err))
+			return
+		}
+		defer func() {
+			if p := recover(); p != nil {
+				tx.Rollback()
+				panic(p)
+			} else if err != nil {
+				tx.Rollback()
+			} else {
+				tx.Commit()
 			}
+		}()
 
-			// Safely append the URL
-			mu.Lock()
-			urls = append(urls, uploadResult.SecureURL)
-			mu.Unlock()
-		}(image)
-	}
-
-	wg.Wait()           // Wait for uploads to complete before proceeding
-	close(uploadErrors) //close channel to indicate no more item is been received
-
-	// Check for upload errors
-	if len(uploadErrors) > 0 {
-		return nil, fmt.Errorf("image upload failed: %v", <-uploadErrors)
-	}
-
-	// Begin database transaction
-	tx, err := i.Models.BeginTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %v", err)
-	}
-
-	// Ensure transaction is committed or rolled back
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback()
-			panic(p)
-		} else if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
+		// Save product details and images in the database (if applicable)
+		err = i.Models.CreateInventory(tx, dbCtx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, urls)
+		if err != nil {
+			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
+			return
 		}
 	}()
 
-	// Save inventory to the database
-	err = i.Models.CreateInventory(tx, ctx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, urls)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create inventory: %v", err)
-	}
-
-	// Return success response
+	// Immediately return success response to the user
 	return &inventory.CreateInventoryResponse{
-		Message:    "Inventory created successfully.",
-		StatusCode: 201,
+		Message:    "Inventory creation request received. Processing images in the background.",
+		StatusCode: 202, // 202 Accepted since the processing is asynchronous
 		Error:      false,
 	}, nil
 }

@@ -26,6 +26,14 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	}
 }
 
+func (p *PostgresRepository) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
+	tx, err := p.Conn.BeginTx(ctx, nil) // Begin a transaction with the provided context
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	return tx, nil
+}
+
 func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
 
 	query := `SELECT id, email, first_name, last_name, password, verified, updated_at, created_at FROM users`
@@ -172,6 +180,8 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 
 func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
 
+	start := time.Now()
+	log.Println("Inside Get category Query")
 	// query to select
 	query := `SELECT id, name, description, icon_class, updated_at, created_at FROM categories WHERE id = $1`
 
@@ -197,5 +207,44 @@ func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*C
 		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
 	}
 
+	log.Printf("GetcategoryByID took %s", time.Since(start))
+
 	return &category, nil
+}
+func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error) {
+	start := time.Now()
+	log.Println("Inside Get subcategory Query")
+	// query to select
+	query := `SELECT id, name, category_id, description, icon_class, updated_at, created_at FROM subcategories WHERE id = $1`
+
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var subCategory Subcategory
+
+	err := row.Scan(
+		&subCategory.ID,
+		&subCategory.CategoryId,
+		&subCategory.Name,
+		&subCategory.Description,
+		&subCategory.IconClass,
+		&subCategory.UpdatedAt,
+		&subCategory.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Handle case where no category is found for the given ID
+			return nil, fmt.Errorf("no subcategory found with ID %s", id)
+		}
+		// Handle other possible errors
+		return nil, fmt.Errorf("error retrieving subcategory by ID: %w", err)
+	}
+
+	log.Printf("SubGetcategoryByID took %s", time.Since(start))
+	return &subCategory, nil
+}
+
+func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, userId string, categoryId string, subcategoryId string, urls []string) error {
+
+	return nil
 }

@@ -125,6 +125,8 @@ github.com/obynonwane/rental-service-proto v0.0.0-20241118000053-29c1d04f6b43 h1
 github.com/obynonwane/rental-service-proto v0.0.0-20241118000053-29c1d04f6b43/go.mod h1:v6BrxXxIyZeEFIKYdvynQTdqoLcipvFXN9vQgPfGK4Q=
 github.com/obynonwane/rental-service-proto v0.0.0-20241118093627-48f3bf19a025 h1:fPteQAt4++x0TOjuqiE713V8EIb/hsSOi0HqJJCeQw0=
 github.com/obynonwane/rental-service-proto v0.0.0-20241118093627-48f3bf19a025/go.mod h1:v6BrxXxIyZeEFIKYdvynQTdqoLcipvFXN9vQgPfGK4Q=
+github.com/obynonwane/rental-service-proto v0.0.0-20241119120317-de76dac12d22 h1:RP9ALOGMUQabdMEaoDQ4xyPw/rHTQRbn3LeHQvf5Os8=
+github.com/obynonwane/rental-service-proto v0.0.0-20241119120317-de76dac12d22/go.mod h1:v6BrxXxIyZeEFIKYdvynQTdqoLcipvFXN9vQgPfGK4Q=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

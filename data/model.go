@@ -244,7 +244,37 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 	return &subCategory, nil
 }
 
-func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, userId string, categoryId string, subcategoryId string, urls []string) error {
+func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, name string, description string, userId string, categoryId string, subcategoryId string, urls []string) error {
+
+	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, updated_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+			RETURNING id, name, description, user_id, category_id, subcategory_id, updated_at, created_at`
+
+	var inventory Inventory
+	err := tx.QueryRowContext(ctx, query, name, description, userId, categoryId, subcategoryId).Scan(
+		&inventory.ID,
+		&inventory.Name,
+		&inventory.Description,
+		&inventory.UserId,
+		&inventory.CategoryId,
+		&inventory.SubcategoryId,
+		&inventory.CreatedAt,
+		&inventory.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create inventory: %w", err)
+	}
+
+	// Insert image URLs into a separate table
+	for _, url := range urls {
+		imageQuery := `
+				INSERT INTO inventory_images (live_url, inventory_id, updated_at, created_at) 
+				VALUES ($1, $2, NOW(), NOW())`
+		_, err := tx.ExecContext(ctx, imageQuery, url, inventory.ID)
+		if err != nil {
+			return fmt.Errorf("failed to insert image URL: %w", err)
+		}
+	}
 
 	return nil
 }

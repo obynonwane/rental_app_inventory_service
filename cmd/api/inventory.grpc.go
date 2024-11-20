@@ -111,7 +111,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 	}()
 
 	// Save inventory to the database
-	err = i.Models.CreateInventory(tx, ctx, req.UserId, req.CategoryId, req.SubCategoryId, urls)
+	err = i.Models.CreateInventory(tx, ctx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, urls)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create inventory: %v", err)
 	}

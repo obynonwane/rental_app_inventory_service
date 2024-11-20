@@ -13,5 +13,5 @@ type Repository interface {
 	GetcategoryByID(ctx context.Context, id string) (*Category, error)
 	GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error)
 	GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error)
-	CreateInventory(tx *sql.Tx, ctx context.Context, userId string, categoryId string, subcategoryId string, urls []string) error
+	CreateInventory(tx *sql.Tx, ctx context.Context, name string, description string, userId string, categoryId string, subcategoryId string, urls []string) error
 }

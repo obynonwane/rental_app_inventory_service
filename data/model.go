@@ -309,3 +309,61 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*
 
 	return &inventory, nil
 }
+
+func (u *PostgresRepository) CreateInventoryRating(
+	ctx context.Context,
+	inventoryId string,
+	raterId string,
+	userId string,
+	comment string,
+	rating int32) (*InventoryRating, error) {
+
+	query := `INSERT INTO inventory_ratings (inventory_id, user_id, rater_id, rating, comment, updated_at, created_at)
+	VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
+	RETURNING id, inventory_id, user_id, rater_id, rating, comment, updated_at, created_at`
+
+	var inventoryRating InventoryRating
+	err := u.Conn.QueryRowContext(ctx, query, inventoryId, userId, raterId, rating, comment).Scan(
+		&inventoryRating.ID,
+		&inventoryRating.InventoryId,
+		&inventoryRating.UserId,
+		&inventoryRating.RaterId,
+		&inventoryRating.Rating,
+		&inventoryRating.Comment,
+		&inventoryRating.UpdatedAt,
+		&inventoryRating.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create inventory rating: %w", err)
+	}
+
+	return &inventoryRating, nil
+}
+
+func (u *PostgresRepository) CreateUserRating(
+	ctx context.Context,
+	userId string,
+	raterId string,
+	comment string,
+	rating int32) (*UserRating, error) {
+
+	query := `INSERT INTO user_ratings (user_id, rater_id, rating, comment, updated_at, created_at)
+	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+	RETURNING id, user_id, rater_id, rating, comment, updated_at, created_at`
+
+	var userRating UserRating
+	err := u.Conn.QueryRowContext(ctx, query, userId, raterId, rating, comment).Scan(
+		&userRating.ID,
+		&userRating.UserId,
+		&userRating.RaterId,
+		&userRating.Rating,
+		&userRating.Comment,
+		&userRating.UpdatedAt,
+		&userRating.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user rating: %w", err)
+	}
+
+	return &userRating, nil
+}

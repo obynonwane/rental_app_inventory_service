@@ -459,13 +459,13 @@ func (i *InventoryServer) RateInventory(ctx context.Context, req *inventory.Inve
 	inventoryErr := make(chan error, 1)
 
 	// Create a context with a timeout for the asynchronous task
-	// timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
-	// defer cancel()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		inv, err := i.Models.GetInventoryByID(ctx, req.InventoryId)
+		inv, err := i.Models.GetInventoryByID(timeoutCtx, req.InventoryId)
 
 		if err != nil {
 			inventoryErr <- err
@@ -480,26 +480,41 @@ func (i *InventoryServer) RateInventory(ctx context.Context, req *inventory.Inve
 
 	retrievedInventory := <-inventoryOwnerCh
 	theErr := <-inventoryErr
-	log.Println(retrievedInventory, "the inventory")
 
 	if theErr != nil {
 		return nil, fmt.Errorf("failed to retrieve inventory: %v", theErr)
 	}
 
-	createdRatingCh := make(chan *data.Rating)
+	createdRatingCh := make(chan *data.InventoryRating)
 	ratingCreateErrCh := make(chan error)
 	// start a gorouting for creating the inventory
 	go func() {
 		// make call to db to create inventory
-		createdInv, err := i.Models.CreateInventoryRating(ctx, req.RaterId, retrievedInventory.UserId, req.Comment, req.Rating)
+		createdInv, err := i.Models.CreateInventoryRating(ctx, req.InventoryId, req.RaterId, retrievedInventory.UserId, req.Comment, req.Rating)
+		if err != nil {
+			ratingCreateErrCh <- err
+		}
+
+		createdRatingCh <- createdInv
 	}()
 
-	select {}
+	select {
+	case data := <-createdRatingCh:
+		return &inventory.InventoryRatingResponse{
+			Id:             data.ID,
+			InventoryId:    data.InventoryId,
+			RaterId:        data.RaterId,
+			Rating:         data.Rating,
+			Comment:        data.Comment,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+		}, nil
 
-	// chec
-	// start a go routing
-	// make a call to retrieve user who have the inventory
-	// update the rating
+	case err := <-ratingCreateErrCh:
+		return nil, fmt.Errorf("failed to create inventory rating: %v", err)
 
-	return nil, nil
+	case <-timeoutCtx.Done():
+		return nil, fmt.Errorf("request timed out while fetching subcategories")
+	}
+
 }

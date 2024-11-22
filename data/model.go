@@ -181,7 +181,7 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
 
 	start := time.Now()
-	log.Println("Inside Get category Query")
+
 	// query to select
 	query := `SELECT id, name, description, icon_class, updated_at, created_at FROM categories WHERE id = $1`
 
@@ -277,4 +277,35 @@ func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, na
 	}
 
 	return nil
+}
+
+func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
+	log.Println("Reached GetInventoryByID function")
+
+	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at FROM inventories WHERE id = $1`
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var inventory Inventory
+
+	err := row.Scan(
+		&inventory.ID,
+		&inventory.Name,
+		&inventory.Description,
+		&inventory.UserId,
+		&inventory.CategoryId,
+		&inventory.SubcategoryId,
+		&inventory.Promoted,
+		&inventory.Deactivated,
+		&inventory.UpdatedAt, // Ensure the order matches the query
+		&inventory.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no inventory found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving inventory by ID: %w", err)
+	}
+
+	return &inventory, nil
 }

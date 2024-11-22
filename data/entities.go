@@ -61,3 +61,24 @@ type InventoryImage struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+type InventoryRating struct {
+	ID          string    `json:"id"`
+	InventoryId string    `json:"inventory_id"`
+	UserId      string    `json:"user_id"`
+	RaterId     string    `json:"rater_id"`
+	Rating      string    `json:"rating"`
+	Comment     string    `json:"comment"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type UserRating struct {
+	ID          string    `json:"id"`
+	UserId      string    `json:"user_id"`
+	RaterId     string    `json:"rater_id"`
+	Rating      string    `json:"rating"`
+	Comment     string    `json:"comment"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time `json:"created_at"`
+}

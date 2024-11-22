@@ -453,7 +453,53 @@ func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequ
 }
 
 func (i *InventoryServer) RateInventory(ctx context.Context, req *inventory.InventoryRatingRequest) (*inventory.InventoryRatingResponse, error) {
+	// start a work group to retrive the user who owns the inventory
+	var wg sync.WaitGroup
+	inventoryOwnerCh := make(chan *data.Inventory, 1)
+	inventoryErr := make(chan error, 1)
 
-	log.Println("reached the server")
+	// Create a context with a timeout for the asynchronous task
+	// timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	// defer cancel()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		inv, err := i.Models.GetInventoryByID(ctx, req.InventoryId)
+
+		if err != nil {
+			inventoryErr <- err
+		}
+		inventoryOwnerCh <- inv
+
+	}()
+
+	wg.Wait()
+	close(inventoryOwnerCh)
+	close(inventoryErr)
+
+	retrievedInventory := <-inventoryOwnerCh
+	theErr := <-inventoryErr
+	log.Println(retrievedInventory, "the inventory")
+
+	if theErr != nil {
+		return nil, fmt.Errorf("failed to retrieve inventory: %v", theErr)
+	}
+
+	createdRatingCh := make(chan *data.Rating)
+	ratingCreateErrCh := make(chan error)
+	// start a gorouting for creating the inventory
+	go func() {
+		// make call to db to create inventory
+		createdInv, err := i.Models.CreateInventoryRating(ctx, req.RaterId, retrievedInventory.UserId, req.Comment, req.Rating)
+	}()
+
+	select {}
+
+	// chec
+	// start a go routing
+	// make a call to retrieve user who have the inventory
+	// update the rating
+
 	return nil, nil
 }

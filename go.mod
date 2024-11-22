@@ -10,7 +10,7 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgx/v4 v4.18.3
-	github.com/obynonwane/rental-service-proto v0.0.0-20241121005121-dd6286fc8497
+	github.com/obynonwane/rental-service-proto v0.0.0-20241122125901-53418c7e3b14
 	github.com/prometheus/client_golang v1.20.2
 	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.35.1

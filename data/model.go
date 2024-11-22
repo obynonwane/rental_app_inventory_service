@@ -343,9 +343,10 @@ func (u *PostgresRepository) CreateInventoryRating(
 func (u *PostgresRepository) CreateUserRating(
 	ctx context.Context,
 	userId string,
-	raterId string,
+	rating int32,
 	comment string,
-	rating int32) (*UserRating, error) {
+	raterId string,
+) (*UserRating, error) {
 
 	query := `INSERT INTO user_ratings (user_id, rater_id, rating, comment, updated_at, created_at)
 	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
@@ -366,4 +367,32 @@ func (u *PostgresRepository) CreateUserRating(
 	}
 
 	return &userRating, nil
+}
+
+func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
+	query := `SELECT id, email, first_name, last_name, verified, updated_at, created_at FROM users WHERE id = $1`
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var user User
+
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+		&user.Verified,
+		&user.UpdatedAt,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
+	}
+
+	log.Println(user, "the user is here")
+
+	return &user, nil
 }

@@ -518,3 +518,67 @@ func (i *InventoryServer) RateInventory(ctx context.Context, req *inventory.Inve
 	}
 
 }
+
+func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatingRequest) (*inventory.UserRatingResponse, error) {
+
+	// channel to check if user been rated exist
+	userExist := make(chan *data.User, 1)
+	userErr := make(chan error, 1)
+
+	// channel to create the rating
+	createdRatingCh := make(chan *data.UserRating, 1)
+	ratingCreateErr := make(chan error, 1)
+
+	// Create a context with a timeout for the asynchronous task
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	go func() {
+		user, err := i.Models.GetUserByID(ctx, req.UserId)
+		if err != nil {
+			userErr <- err
+		}
+		userExist <- user
+	}()
+
+	select {
+	case data := <-userExist:
+		go func() {
+
+			createdUserRating, err := i.Models.CreateUserRating(timeoutCtx, data.ID, req.Rating, req.Comment, req.RaterId)
+			if err != nil {
+				ratingCreateErr <- err
+			}
+
+			createdRatingCh <- createdUserRating
+
+		}()
+
+		select {
+		case rating := <-createdRatingCh:
+			return &inventory.UserRatingResponse{
+				Id:             rating.ID,
+				UserId:         rating.UserId,
+				RaterId:        rating.RaterId,
+				Rating:         rating.Rating,
+				Comment:        rating.Comment,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(rating.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(rating.UpdatedAt)),
+			}, nil
+
+		case err := <-userErr:
+			return nil, fmt.Errorf("failed to create rating for user: %v", err)
+
+		case <-timeoutCtx.Done():
+			return nil, fmt.Errorf("request timed out while creating rating")
+		}
+
+	case err := <-userErr:
+		// If there was an error fetching users, return it
+		return nil, fmt.Errorf("failed to retrieve user who is been rated: %v", err)
+
+	case <-ctx.Done():
+		// If the operation timed out, return a timeout error
+		return nil, fmt.Errorf("request timed out while fetching user who is been rated")
+	}
+}

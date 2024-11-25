@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -43,6 +45,34 @@ func (app *Config) grpcListen() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to listen for gRPC: %v", err)
 	}
+}
+
+func (app *Config) GetUsers(w http.ResponseWriter, r *http.Request) {
+
+	// Extract the context from the incoming HTTP request
+	ctx := r.Context()
+
+	users, err := app.Repo.GetAll(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			app.errorJSON(w, errors.New("no record found"), nil, http.StatusBadRequest)
+			return
+		}
+
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	log.Println(users)
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "users retrieved successfully",
+		Data:       users,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
 }
 
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
@@ -544,14 +574,11 @@ func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatin
 	select {
 	case data := <-userExist:
 		go func() {
-
 			createdUserRating, err := i.Models.CreateUserRating(timeoutCtx, data.ID, req.Rating, req.Comment, req.RaterId)
 			if err != nil {
 				ratingCreateErr <- err
 			}
-
 			createdRatingCh <- createdUserRating
-
 		}()
 
 		select {
@@ -575,7 +602,8 @@ func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatin
 
 	case err := <-userErr:
 		// If there was an error fetching users, return it
-		return nil, fmt.Errorf("failed to retrieve user who is been rated: %v", err)
+		log.Println(fmt.Errorf("failed to retrieve user who is been rated: %v", err))
+		return nil, fmt.Errorf("failed to retrieve user who is been rated")
 
 	case <-ctx.Done():
 		// If the operation timed out, return a timeout error

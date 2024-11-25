@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"sync"
 	"time"
 
 	_ "github.com/jackc/pgconn"
@@ -26,8 +25,8 @@ const (
 var counts int64
 
 type Config struct {
-	Repo data.Repository
-	mu   sync.Mutex
+	Repo   data.Repository
+	Client *http.Client
 }
 
 func main() {
@@ -42,7 +41,8 @@ func main() {
 
 	// Setup config with an initialized Repo
 	app := Config{
-		Repo: data.NewPostgresRepository(conn),
+		Repo:   data.NewPostgresRepository(conn),
+		Client: &http.Client{},
 	}
 
 	// Pass the initialized Config to RPCServer

@@ -13,6 +13,7 @@ import (
 	_ "github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/joho/godotenv"
 	"github.com/obynonwane/inventory-service/data"
 )
 
@@ -75,11 +76,13 @@ func main() {
 func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
@@ -88,23 +91,11 @@ func openDB(dsn string) (*sql.DB, error) {
 
 func connectToDB() *sql.DB {
 
-	host := os.Getenv("DATABASE_HOST")
-	port := os.Getenv("DATABASE_PORT")
-	user := os.Getenv("DATABASE_USER")
-	password := os.Getenv("DATABASE_PASSWORD")
-	dbname := os.Getenv("DATABASE_NAME")
-	sslmode := os.Getenv("DATABASE_SSLMODE")
-	timezone := os.Getenv("DATABASE_TIMEZONE")
-	connectTimeout := os.Getenv("DATABASE_CONNECT_TIMEOUT")
-
-	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s timezone=%s connect_timeout=%s",
-		host, port, user, password, dbname, sslmode, timezone, connectTimeout,
-	)
-	dsn := connStr
+	dsn := DbConnectionDetails()
 	for {
 		connection, err := openDB(dsn)
 		if err != nil {
+			log.Println(err)
 			log.Println("Postgres not yet ready ...")
 			counts++
 		} else {
@@ -121,6 +112,42 @@ func connectToDB() *sql.DB {
 		time.Sleep(2 * time.Second)
 		continue
 	}
+}
+
+func DbConnectionDetails() string {
+
+	environment := os.Getenv("GO_ENV")
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
+	// Load environment-specific .env file
+	goEnv := os.Getenv("GO_ENV")
+	if goEnv == "test" {
+		err = godotenv.Load(".env.test")
+		if err != nil {
+			log.Println("No .env.test file found")
+		}
+	}
+
+	host := os.Getenv("DATABASE_HOST")
+	port := os.Getenv("DATABASE_PORT")
+	user := os.Getenv("DATABASE_USER")
+	password := os.Getenv("DATABASE_PASSWORD")
+	dbname := os.Getenv("DATABASE_NAME")
+	sslmode := os.Getenv("DATABASE_SSLMODE")
+	timezone := os.Getenv("DATABASE_TIMEZONE")
+	connectTimeout := os.Getenv("DATABASE_CONNECT_TIMEOUT")
+
+	connStr := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s timezone=%s connect_timeout=%s",
+		host, port, user, password, dbname, sslmode, timezone, connectTimeout,
+	)
+
+	log.Println(environment, "GO ENVIRONMENT")
+	return connStr
 }
 
 func (app *Config) setupRepo(conn *sql.DB) {

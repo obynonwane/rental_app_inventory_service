@@ -116,7 +116,7 @@ func connectToDB() *sql.DB {
 
 func DbConnectionDetails() string {
 
-	environment := os.Getenv("GO_ENV")
+	environment := os.Getenv("DEV_ENV")
 
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -124,7 +124,7 @@ func DbConnectionDetails() string {
 	}
 
 	// Load environment-specific .env file
-	goEnv := os.Getenv("GO_ENV")
+	goEnv := os.Getenv("DEV_ENV")
 	if goEnv == "test" {
 		err = godotenv.Load(".env.test")
 		if err != nil {

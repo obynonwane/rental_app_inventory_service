@@ -1,49 +1,33 @@
-name: Release to Docker Hub
+name: CI and Deploy to Docker Hub
 
 on:
-  workflow_run:
-    workflows: ["ci-test"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 jobs:
-  release:
+  build-and-deploy:
+    name: Build and Deploy Docker Image
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - uses: actions/checkout@v4
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.21.0'
-
-      - name: Install Dependencies
-        run: |
-          go mod tidy
-          go mod vendor
-
-      - name: Debug Log
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "List files in workspace:"
-          ls -al
-          echo "Environment variables:"
-          env
-
-      - name: Build Inventory Binary
-        run: make build_inventory_service
-
+      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Build the Docker image
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0 .
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventory-app:latest .
 
-      - name: Push Docker Image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0
+      # Push the Docker image to Docker Hub
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/inventory-app:latest

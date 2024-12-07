@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
 	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/obynonwane/inventory-service/data"
 )
 
@@ -12,6 +14,11 @@ var testApp Config
 // Special function to setup and tear down testing environments
 // It takes a single argument of type *testing.M
 func TestMain(m *testing.M) {
+
+	err := godotenv.Load(".env.test")
+	if err != nil {
+		log.Fatalf("Error loading .env.test file")
+	}
 
 	repo := data.NewPostgresTestRepository(nil)
 

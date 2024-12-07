@@ -25,9 +25,9 @@ jobs:
       # Build the Docker image
       - name: Build Docker Image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventory-app:latest .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0 .
 
       # Push the Docker image to Docker Hub
       - name: Push Docker Image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/inventory-app:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0

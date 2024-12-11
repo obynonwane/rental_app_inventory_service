@@ -432,19 +432,36 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string)
 	return ratings, nil
 }
 
-func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string) ([]*UserRating, error) {
+func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
+	offset := (page - 1) * limit // Calculate offset
 
-	query := `SELECT id, user_id, rater_id, rating, comment, updated_at, created_at FROM user_ratings where user_id = $1`
+	var totalRows int32 // Variable to hold the total count
 
-	rows, err := u.Conn.QueryContext(ctx, query, id)
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
+	// Execute the count query to get total rows
+	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, 0, err
+	}
+
+	// Query to fetch ratings
+	query := `SELECT id, user_id, rater_id, rating, comment, updated_at, created_at 
+              FROM user_ratings 
+              WHERE user_id = $1 
+              ORDER BY created_at DESC 
+              LIMIT $2 OFFSET $3`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
 	if err != nil {
 		log.Println(err, "ERROR")
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	var ratings []*UserRating
 
+	// Iterate through the result set
 	for rows.Next() {
 		var rating UserRating
 		err := rows.Scan(
@@ -458,11 +475,16 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string) ([]*
 		)
 		if err != nil {
 			log.Println("Error scanning", err)
-			return nil, err
+			return nil, 0, err
 		}
 
 		ratings = append(ratings, &rating)
 	}
 
-	return ratings, nil
+	// Check for errors encountered during iteration
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return ratings, totalRows, nil
 }

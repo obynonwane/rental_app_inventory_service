@@ -280,7 +280,6 @@ func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, na
 }
 
 func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
-	log.Println("Reached GetInventoryByID function")
 
 	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at FROM inventories WHERE id = $1`
 	row := u.Conn.QueryRowContext(ctx, query, id)
@@ -370,7 +369,7 @@ func (u *PostgresRepository) CreateUserRating(
 }
 
 func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
-	query := `SELECT id, email, first_name, last_name, verified, updated_at, created_at FROM users WHERE id = $1`
+	query := `SELECT id, email, first_name, last_name, phone, verified, updated_at, created_at FROM users WHERE id = $1`
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
 	var user User
@@ -380,6 +379,7 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 		&user.Email,
 		&user.FirstName,
 		&user.LastName,
+		&user.Phone,
 		&user.Verified,
 		&user.UpdatedAt,
 		&user.CreatedAt,
@@ -395,4 +395,74 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 	log.Println(user, "the user is here")
 
 	return &user, nil
+}
+
+func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string) ([]*InventoryRating, error) {
+
+	query := `SELECT id, inventory_id, user_id, rater_id, rating, comment, updated_at, created_at FROM inventory_ratings where id = $1`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ratings []*InventoryRating
+
+	for rows.Next() {
+		var rating InventoryRating
+		err := rows.Scan(
+			&rating.ID,
+			&rating.InventoryId,
+			&rating.UserId,
+			&rating.RaterId,
+			&rating.Rating,
+			&rating.Comment,
+			&rating.UpdatedAt,
+			&rating.CreatedAt,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, err
+		}
+
+		ratings = append(ratings, &rating)
+	}
+
+	return ratings, nil
+}
+
+func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string) ([]*UserRating, error) {
+
+	query := `SELECT id, user_id, rater_id, rating, comment, updated_at, created_at FROM user_ratings where user_id = $1`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id)
+	if err != nil {
+		log.Println(err, "ERROR")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ratings []*UserRating
+
+	for rows.Next() {
+		var rating UserRating
+		err := rows.Scan(
+			&rating.ID,
+			&rating.UserId,
+			&rating.RaterId,
+			&rating.Rating,
+			&rating.Comment,
+			&rating.UpdatedAt,
+			&rating.CreatedAt,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, err
+		}
+
+		ratings = append(ratings, &rating)
+	}
+
+	return ratings, nil
 }

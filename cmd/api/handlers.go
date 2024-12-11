@@ -610,3 +610,77 @@ func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatin
 		return nil, fmt.Errorf("request timed out while fetching user who is been rated")
 	}
 }
+
+func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.ResourceId) (*inventory.InventoryResponseDetail, error) {
+
+	// 1. channel to hold inventory & error channel
+	inventoryExistCh := make(chan *data.Inventory, 1)
+	errInventoryExistCh := make(chan error, 1)
+
+	// 2. create a timeout to make sure this ha
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// 3. go routine to retrieve inventory whose id is supplied
+	go func() {
+
+		inv, err := i.Models.GetInventoryByID(timeoutCtx, req.Id)
+
+		if err != nil {
+			errInventoryExistCh <- err
+		}
+		inventoryExistCh <- inv
+
+	}()
+
+	select {
+
+	case data := <-inventoryExistCh:
+
+		user, err := i.Models.GetUserByID(ctx, data.UserId)
+		if err != nil {
+			log.Fatal("error getting user who owns inventory", err)
+		}
+
+		return &inventory.InventoryResponseDetail{
+			Inventory: &inventory.InventoryResponse{
+				Id:             data.ID,
+				Name:           data.Name,
+				Description:    data.Description,
+				UserId:         data.UserId,
+				CategoryId:     data.CategoryId,
+				SubcategoryId:  data.SubcategoryId,
+				Promoted:       data.Promoted,
+				Deactivated:    data.Deactivated,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+			},
+			User: &inventory.User{
+				Id:             user.ID,
+				FirstName:      user.FirstName,
+				LastName:       user.LastName,
+				Phone:          user.Phone,
+				Email:          user.Email,
+				Verified:       user.Verified,
+				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
+			},
+		}, nil
+
+	case err := <-errInventoryExistCh:
+		log.Println(fmt.Errorf("error fetching the inventory: %v", err))
+		return nil, fmt.Errorf("error fetching the inventory")
+
+	case <-ctx.Done():
+		// If the operation timed out, return a timeout error
+		return nil, fmt.Errorf("request timed out while fetching user who is been rated")
+	}
+
+}
+
+func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.GetResourceWithIDAndPagination) (*inventory.UserRatingsResponse, error) {
+
+	log.Println(req, "the request was reached")
+
+	return nil, nil
+}

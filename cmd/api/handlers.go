@@ -713,14 +713,33 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 				Comment:        singleRating.Comment,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
+				Rater: &inventory.User{
+					Id:        singleRating.RaterId,
+					FirstName: singleRating.RaterDetails.FirstName,
+					Email:     singleRating.RaterDetails.Email,
+					LastName:  singleRating.RaterDetails.LastName,
+				},
 			}
 			allUserRating = append(allUserRating, rating)
+		}
+
+		summary, err := i.Models.GetRatingSummary(timeoutCtx, req.Id.Id)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving rating summary for user")
 		}
 
 		return &inventory.UserRatingsResponse{
 			UserRatings: allUserRating,
 			PageDetail:  &inventory.PaginationParam{Page: req.Pagination.Page, Limit: req.Pagination.Limit},
 			Total:       <-totalRecCh,
+			RatingSumary: &inventory.RatingSummary{
+				FiveStar:      summary.FiveStar,
+				FourStar:      summary.FourStar,
+				ThreeStar:     summary.ThreeStar,
+				TwoStar:       summary.TwoStar,
+				OneStar:       summary.OneStar,
+				AverageRating: summary.AverageRating,
+			},
 		}, nil
 
 	case err := <-errCh:
@@ -730,55 +749,3 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 		return nil, fmt.Errorf("request timed out while fetching user ratings")
 	}
 }
-
-// func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.GetResourceWithIDAndPagination) (*inventory.UserRatingsResponse, error) {
-
-// 	// 1. result & errorchannel
-// 	resultCh := make(chan []*data.UserRating, 1)
-// 	errCh := make(chan error, 1)
-
-// 	// 2. create a timeout context
-// 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-// 	defer cancel()
-
-// 	go func() {
-// 		result, totalRow, err := i.Models.GetUserRatings(timeoutCtx, req.Id.Id, req.Pagination.Page, req.Pagination.Limit)
-// 		if err != nil {
-// 			errCh <- err
-// 		}
-// 		resultCh <- result
-
-// 		log.Println(totalRow)
-// 	}()
-
-// 	select {
-// 	case data := <-resultCh:
-
-// 		var allUserRating []*inventory.UserRatingResponse
-
-// 		for _, singleRating := range data {
-
-// 			rating := &inventory.UserRatingResponse{
-// 				Id:             singleRating.ID,
-// 				UserId:         singleRating.UserId,
-// 				RaterId:        singleRating.RaterId,
-// 				Rating:         singleRating.Rating,
-// 				Comment:        singleRating.Comment,
-// 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
-// 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
-// 			}
-
-// 			allUserRating = append(allUserRating, rating)
-// 		}
-
-// 		return &inventory.UserRatingsResponse{
-// 			UserRatings: allUserRating,
-// 		}, nil
-// 	case err := <-errCh:
-// 		log.Println(fmt.Errorf("error fetching the inventory: %v", err))
-// 		return nil, fmt.Errorf("error fetching the inventory")
-// 	case <-ctx.Done():
-// 		// If the operation timed out, return a timeout error
-// 		return nil, fmt.Errorf("request timed out while fetching user who is been rated")
-// 	}
-// }

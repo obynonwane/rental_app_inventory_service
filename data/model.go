@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -432,6 +433,63 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string)
 	return ratings, nil
 }
 
+// func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
+// 	offset := (page - 1) * limit // Calculate offset
+
+// 	var totalRows int32 // Variable to hold the total count
+
+// 	// Query to count total rows
+// 	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
+// 	// Execute the count query to get total rows
+// 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+// 	if err := row.Scan(&totalRows); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Query to fetch ratings
+// 	query := `SELECT id, user_id, rater_id, rating, comment, updated_at, created_at
+//               FROM user_ratings
+//               WHERE user_id = $1
+//               ORDER BY created_at DESC
+//               LIMIT $2 OFFSET $3`
+
+// 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+// 	if err != nil {
+// 		log.Println(err, "ERROR")
+// 		return nil, 0, err
+// 	}
+// 	defer rows.Close()
+
+// 	var ratings []*UserRating
+
+// 	// Iterate through the result set
+// 	for rows.Next() {
+// 		var rating UserRating
+// 		err := rows.Scan(
+// 			&rating.ID,
+// 			&rating.UserId,
+// 			&rating.RaterId,
+// 			&rating.Rating,
+// 			&rating.Comment,
+// 			&rating.UpdatedAt,
+// 			&rating.CreatedAt,
+// 		)
+// 		if err != nil {
+// 			log.Println("Error scanning", err)
+// 			return nil, 0, err
+// 		}
+
+// 		ratings = append(ratings, &rating)
+// 	}
+
+// 	// Check for errors encountered during iteration
+// 	if err := rows.Err(); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	return ratings, totalRows, nil
+// }
+
 func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
 	offset := (page - 1) * limit // Calculate offset
 
@@ -439,17 +497,19 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 
 	// Query to count total rows
 	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
-	// Execute the count query to get total rows
 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
 	if err := row.Scan(&totalRows); err != nil {
 		return nil, 0, err
 	}
 
-	// Query to fetch ratings
-	query := `SELECT id, user_id, rater_id, rating, comment, updated_at, created_at 
-              FROM user_ratings 
-              WHERE user_id = $1 
-              ORDER BY created_at DESC 
+	// Query to fetch ratings and rater details
+	query := `SELECT 
+                  ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
+              FROM user_ratings ur
+              JOIN users u ON ur.rater_id = u.id
+              WHERE ur.user_id = $1
+              ORDER BY ur.created_at DESC
               LIMIT $2 OFFSET $3`
 
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
@@ -463,22 +523,27 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 
 	// Iterate through the result set
 	for rows.Next() {
-		var rating UserRating
+		var ratingWithRater UserRating
 		err := rows.Scan(
-			&rating.ID,
-			&rating.UserId,
-			&rating.RaterId,
-			&rating.Rating,
-			&rating.Comment,
-			&rating.UpdatedAt,
-			&rating.CreatedAt,
+			&ratingWithRater.ID,
+			&ratingWithRater.UserId,
+			&ratingWithRater.RaterId,
+			&ratingWithRater.Rating,
+			&ratingWithRater.Comment,
+			&ratingWithRater.UpdatedAt,
+			&ratingWithRater.CreatedAt,
+			&ratingWithRater.RaterDetails.ID,
+			&ratingWithRater.RaterDetails.FirstName,
+			&ratingWithRater.RaterDetails.LastName,
+			&ratingWithRater.RaterDetails.Email,
+			&ratingWithRater.RaterDetails.Phone,
 		)
 		if err != nil {
 			log.Println("Error scanning", err)
 			return nil, 0, err
 		}
 
-		ratings = append(ratings, &rating)
+		ratings = append(ratings, &ratingWithRater)
 	}
 
 	// Check for errors encountered during iteration
@@ -487,4 +552,42 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 	}
 
 	return ratings, totalRows, nil
+}
+
+type RatingSummary struct {
+	FiveStar      int32   `json:"five_star"`
+	FourStar      int32   `json:"four_star"`
+	ThreeStar     int32   `json:"three_star"`
+	TwoStar       int32   `json:"two_star"`
+	OneStar       int32   `json:"one_star"`
+	AverageRating float64 `json:"average_rating"`
+}
+
+func (u *PostgresRepository) GetRatingSummary(ctx context.Context, userID string) (*RatingSummary, error) {
+	query := `SELECT json_build_object(
+		'five_star', COALESCE(COUNT(CASE WHEN rating = 5 THEN 1 END), 0),
+		'four_star', COALESCE(COUNT(CASE WHEN rating = 4 THEN 1 END), 0),
+		'three_star', COALESCE(COUNT(CASE WHEN rating = 3 THEN 1 END), 0),
+		'two_star', COALESCE(COUNT(CASE WHEN rating = 2 THEN 1 END), 0),
+		'one_star', COALESCE(COUNT(CASE WHEN rating = 1 THEN 1 END), 0),
+		'average_rating', COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)
+	) AS ratings_summary
+	FROM user_ratings
+	WHERE user_id = $1;`
+
+	row := u.Conn.QueryRowContext(ctx, query, userID)
+
+	var summaryJSON []byte
+	err := row.Scan(&summaryJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var summary RatingSummary
+	err = json.Unmarshal(summaryJSON, &summary)
+	if err != nil {
+		return nil, err
+	}
+
+	return &summary, nil
 }

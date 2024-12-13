@@ -22,4 +22,6 @@ type Repository interface {
 	GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error)
 	GetUserRatingSummary(ctx context.Context, userID string) (*RatingSummary, error)
 	GetInventoryRatingSummary(ctx context.Context, inventoryID string) (*RatingSummary, error)
+	CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error)
+	CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error)
 }

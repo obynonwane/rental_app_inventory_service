@@ -820,3 +820,81 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
 	}
 }
+
+func (i *InventoryServer) ReplyInventoryRating(ctx context.Context, req *inventory.ReplyToRatingRequest) (*inventory.ReplyToRatingResponse, error) {
+	// Result and error channels
+	resultCh := make(chan *data.InventoryRatingReply, 1)
+	errCh := make(chan error, 1)
+
+	// Timeout context
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	param := &data.ReplyRatingPayload{
+		RatingID:      req.RatingId,
+		ReplierID:     req.ReplierId,
+		Comment:       req.Comment,
+		ParentReplyID: req.ParentReplyId,
+	}
+
+	go func(param *data.ReplyRatingPayload) {
+		result, err := i.Models.CreateInventoryRatingReply(timeoutCtx, param)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resultCh <- result
+	}(param)
+
+	select {
+	case data := <-resultCh:
+
+		log.Println(data)
+		return nil, nil
+
+	case err := <-errCh:
+		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
+		return nil, fmt.Errorf("error fetching inventory ratings")
+	case <-ctx.Done():
+		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
+	}
+}
+
+func (i *InventoryServer) ReplyUserRating(ctx context.Context, req *inventory.ReplyToRatingRequest) (*inventory.ReplyToRatingResponse, error) {
+	// Result and error channels
+	resultCh := make(chan *data.UserRatingReply, 1)
+	errCh := make(chan error, 1)
+
+	// Timeout context
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	param := &data.ReplyRatingPayload{
+		RatingID:      req.RatingId,
+		ReplierID:     req.ReplierId,
+		Comment:       req.Comment,
+		ParentReplyID: req.ParentReplyId,
+	}
+
+	go func(param *data.ReplyRatingPayload) {
+		result, err := i.Models.CreateUserRatingReply(timeoutCtx, param)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resultCh <- result
+	}(param)
+
+	select {
+	case data := <-resultCh:
+
+		log.Println(data)
+		return nil, nil
+
+	case err := <-errCh:
+		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
+		return nil, fmt.Errorf("error fetching inventory ratings")
+	case <-ctx.Done():
+		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
+	}
+}

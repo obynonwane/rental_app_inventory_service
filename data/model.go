@@ -593,3 +593,57 @@ func (u *PostgresRepository) GetInventoryRatingSummary(ctx context.Context, inve
 
 	return &summary, nil
 }
+
+type ReplyRatingPayload struct {
+	RatingID      string `json:"rating_id"`
+	ReplierID     string `json:"replier_id"`
+	Comment       string `json:"comment"`
+	ParentReplyID string `json:"parent_reply_id"`
+}
+
+func (u *PostgresRepository) CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error) {
+
+	query := `INSERT INTO inventory_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
+	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+	RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	var inventoryRatingReply InventoryRatingReply
+	err := u.Conn.QueryRowContext(ctx, query, param.RatingID, param.ReplierID, param.ParentReplyID, param.Comment).Scan(
+		&inventoryRatingReply.ID,
+		&inventoryRatingReply.RatingID,
+		&inventoryRatingReply.ReplierID,
+		&inventoryRatingReply.ParentReplyID,
+		&inventoryRatingReply.Comment,
+		&inventoryRatingReply.UpdatedAt,
+		&inventoryRatingReply.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user reply: %w", err)
+	}
+
+	return &inventoryRatingReply, nil
+
+}
+
+func (u *PostgresRepository) CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error) {
+
+	query := `INSERT INTO user_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
+	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+	RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	var userRatingReply UserRatingReply
+	err := u.Conn.QueryRowContext(ctx, query, param.RatingID, param.ReplierID, param.ParentReplyID, param.Comment).Scan(
+		&userRatingReply.ID,
+		&userRatingReply.RatingID,
+		&userRatingReply.ReplierID,
+		&userRatingReply.ParentReplyID,
+		&userRatingReply.Comment,
+		&userRatingReply.UpdatedAt,
+		&userRatingReply.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user reply: %w", err)
+	}
+
+	return &userRatingReply, nil
+}

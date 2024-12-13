@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -280,7 +281,6 @@ func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, na
 }
 
 func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
-	log.Println("Reached GetInventoryByID function")
 
 	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at FROM inventories WHERE id = $1`
 	row := u.Conn.QueryRowContext(ctx, query, id)
@@ -370,7 +370,7 @@ func (u *PostgresRepository) CreateUserRating(
 }
 
 func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
-	query := `SELECT id, email, first_name, last_name, verified, updated_at, created_at FROM users WHERE id = $1`
+	query := `SELECT id, email, first_name, last_name, phone, verified, updated_at, created_at FROM users WHERE id = $1`
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
 	var user User
@@ -380,6 +380,7 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 		&user.Email,
 		&user.FirstName,
 		&user.LastName,
+		&user.Phone,
 		&user.Verified,
 		&user.UpdatedAt,
 		&user.CreatedAt,
@@ -395,4 +396,200 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 	log.Println(user, "the user is here")
 
 	return &user, nil
+}
+
+type RatingSummary struct {
+	FiveStar      int32   `json:"five_star"`
+	FourStar      int32   `json:"four_star"`
+	ThreeStar     int32   `json:"three_star"`
+	TwoStar       int32   `json:"two_star"`
+	OneStar       int32   `json:"one_star"`
+	AverageRating float64 `json:"average_rating"`
+}
+
+func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error) {
+	offset := (page - 1) * limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE inventory_id = $1"
+	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, 0, err
+	}
+
+	// Query to fetch ratings and rater details
+	query := `SELECT 
+                  ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
+                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
+              FROM inventory_ratings ir
+              JOIN users u ON ir.rater_id = u.id
+              WHERE ir.inventory_id = $1
+              ORDER BY ir.created_at DESC
+              LIMIT $2 OFFSET $3`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+	if err != nil {
+		log.Println(err, "ERROR")
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var ratings []*InventoryRating
+
+	// Iterate through the result set
+	for rows.Next() {
+		var ratingWithRater InventoryRating
+		err := rows.Scan(
+			&ratingWithRater.ID,
+			&ratingWithRater.InventoryId,
+			&ratingWithRater.UserId,
+			&ratingWithRater.RaterId,
+			&ratingWithRater.Rating,
+			&ratingWithRater.Comment,
+			&ratingWithRater.UpdatedAt,
+			&ratingWithRater.CreatedAt,
+			&ratingWithRater.RaterDetails.ID,
+			&ratingWithRater.RaterDetails.FirstName,
+			&ratingWithRater.RaterDetails.LastName,
+			&ratingWithRater.RaterDetails.Email,
+			&ratingWithRater.RaterDetails.Phone,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, 0, err
+		}
+
+		ratings = append(ratings, &ratingWithRater)
+	}
+
+	// Check for errors encountered during iteration
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return ratings, totalRows, nil
+}
+
+func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
+	offset := (page - 1) * limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
+	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, 0, err
+	}
+
+	// Query to fetch ratings and rater details
+	query := `SELECT 
+                  ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
+              FROM user_ratings ur
+              JOIN users u ON ur.rater_id = u.id
+              WHERE ur.user_id = $1
+              ORDER BY ur.created_at DESC
+              LIMIT $2 OFFSET $3`
+
+	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+	if err != nil {
+		log.Println(err, "ERROR")
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var ratings []*UserRating
+
+	// Iterate through the result set
+	for rows.Next() {
+		var ratingWithRater UserRating
+		err := rows.Scan(
+			&ratingWithRater.ID,
+			&ratingWithRater.UserId,
+			&ratingWithRater.RaterId,
+			&ratingWithRater.Rating,
+			&ratingWithRater.Comment,
+			&ratingWithRater.UpdatedAt,
+			&ratingWithRater.CreatedAt,
+			&ratingWithRater.RaterDetails.ID,
+			&ratingWithRater.RaterDetails.FirstName,
+			&ratingWithRater.RaterDetails.LastName,
+			&ratingWithRater.RaterDetails.Email,
+			&ratingWithRater.RaterDetails.Phone,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, 0, err
+		}
+
+		ratings = append(ratings, &ratingWithRater)
+	}
+
+	// Check for errors encountered during iteration
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return ratings, totalRows, nil
+}
+
+func (u *PostgresRepository) GetUserRatingSummary(ctx context.Context, userID string) (*RatingSummary, error) {
+	query := `SELECT json_build_object(
+		'five_star', COALESCE(COUNT(CASE WHEN rating = 5 THEN 1 END), 0),
+		'four_star', COALESCE(COUNT(CASE WHEN rating = 4 THEN 1 END), 0),
+		'three_star', COALESCE(COUNT(CASE WHEN rating = 3 THEN 1 END), 0),
+		'two_star', COALESCE(COUNT(CASE WHEN rating = 2 THEN 1 END), 0),
+		'one_star', COALESCE(COUNT(CASE WHEN rating = 1 THEN 1 END), 0),
+		'average_rating', COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)
+	) AS ratings_summary
+	FROM user_ratings
+	WHERE user_id = $1;`
+
+	row := u.Conn.QueryRowContext(ctx, query, userID)
+
+	var summaryJSON []byte
+	err := row.Scan(&summaryJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var summary RatingSummary
+	err = json.Unmarshal(summaryJSON, &summary)
+	if err != nil {
+		return nil, err
+	}
+
+	return &summary, nil
+}
+
+func (u *PostgresRepository) GetInventoryRatingSummary(ctx context.Context, inventoryID string) (*RatingSummary, error) {
+	query := `SELECT json_build_object(
+		'five_star', COALESCE(COUNT(CASE WHEN rating = 5 THEN 1 END), 0),
+		'four_star', COALESCE(COUNT(CASE WHEN rating = 4 THEN 1 END), 0),
+		'three_star', COALESCE(COUNT(CASE WHEN rating = 3 THEN 1 END), 0),
+		'two_star', COALESCE(COUNT(CASE WHEN rating = 2 THEN 1 END), 0),
+		'one_star', COALESCE(COUNT(CASE WHEN rating = 1 THEN 1 END), 0),
+		'average_rating', COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)
+	) AS ratings_summary
+	FROM inventory_ratings
+	WHERE inventory_id = $1;`
+
+	row := u.Conn.QueryRowContext(ctx, query, inventoryID)
+
+	var summaryJSON []byte
+	err := row.Scan(&summaryJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var summary RatingSummary
+	err = json.Unmarshal(summaryJSON, &summary)
+	if err != nil {
+		return nil, err
+	}
+
+	return &summary, nil
 }

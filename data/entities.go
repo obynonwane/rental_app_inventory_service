@@ -10,6 +10,7 @@ type User struct {
 	Email       string      `json:"email"`
 	FirstName   string      `json:"first_name,omitempty"`
 	LastName    string      `json:"last_name,omitempty"`
+	Phone       string      `json:"phone"`
 	Password    string      `json:"-"`
 	Verified    bool        `json:"verified"`
 	CreatedAt   time.Time   `json:"created_at"`
@@ -51,6 +52,7 @@ type Inventory struct {
 	CreatedAt     time.Time        `json:"created_at"`
 	UpdatedAt     time.Time        `json:"updated_at"`
 	Images        []InventoryImage `json:"images"` // One-to-many relationship
+	User          User             `json:"user"`
 }
 
 type InventoryImage struct {
@@ -63,22 +65,24 @@ type InventoryImage struct {
 }
 
 type InventoryRating struct {
-	ID          string    `json:"id"`
-	InventoryId string    `json:"inventory_id"`
-	UserId      string    `json:"user_id"`
-	RaterId     string    `json:"rater_id"`
-	Rating      int32     `json:"rating"`
-	Comment     string    `json:"comment"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	InventoryId  string    `json:"inventory_id"`
+	UserId       string    `json:"user_id"`
+	RaterId      string    `json:"rater_id"`
+	Rating       int32     `json:"rating"`
+	Comment      string    `json:"comment"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	RaterDetails User      `json:"rater_details"`
 }
 
 type UserRating struct {
-	ID        string    `json:"id"`
-	UserId    string    `json:"user_id"`
-	RaterId   string    `json:"rater_id"`
-	Rating    int32     `json:"rating"`
-	Comment   string    `json:"comment"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	UserId       string    `json:"user_id"`
+	RaterId      string    `json:"rater_id"`
+	Rating       int32     `json:"rating"`
+	Comment      string    `json:"comment"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	RaterDetails User      `json:"rater_details"`
 }

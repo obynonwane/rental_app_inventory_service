@@ -413,7 +413,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	var totalRows int32 // Variable to hold the total count
 
 	// Query to count total rows
-	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE id = $1"
+	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE inventory_id = $1"
 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
 	if err := row.Scan(&totalRows); err != nil {
 		return nil, 0, err
@@ -421,12 +421,12 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 
 	// Query to fetch ratings and rater details
 	query := `SELECT 
-                  ur.id, ur.inventory_id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+                  ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
                   u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
-              FROM inventory_ratings ur
-              JOIN users u ON ur.rater_id = u.id
-              WHERE ur.id = $1
-              ORDER BY ur.created_at DESC
+              FROM inventory_ratings ir
+              JOIN users u ON ir.rater_id = u.id
+              WHERE ir.inventory_id = $1
+              ORDER BY ir.created_at DESC
               LIMIT $2 OFFSET $3`
 
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
@@ -443,6 +443,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 		var ratingWithRater InventoryRating
 		err := rows.Scan(
 			&ratingWithRater.ID,
+			&ratingWithRater.InventoryId,
 			&ratingWithRater.UserId,
 			&ratingWithRater.RaterId,
 			&ratingWithRater.Rating,
@@ -574,7 +575,7 @@ func (u *PostgresRepository) GetInventoryRatingSummary(ctx context.Context, inve
 		'average_rating', COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)
 	) AS ratings_summary
 	FROM inventory_ratings
-	WHERE user_id = $1;`
+	WHERE inventory_id = $1;`
 
 	row := u.Conn.QueryRowContext(ctx, query, inventoryID)
 

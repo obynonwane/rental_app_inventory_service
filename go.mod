@@ -11,7 +11,7 @@ require (
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/joho/godotenv v1.5.1
-	github.com/obynonwane/rental-service-proto v0.0.0-20241212111243-15b0977762e6
+	github.com/obynonwane/rental-service-proto v0.0.0-20241212125419-fd3407f66fca
 	github.com/prometheus/client_golang v1.20.2
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.68.0

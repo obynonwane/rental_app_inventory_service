@@ -20,7 +20,6 @@ type Repository interface {
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error)
 	GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error)
-	GetRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error)
 	GetUserRatingSummary(ctx context.Context, userID string) (*RatingSummary, error)
 	GetInventoryRatingSummary(ctx context.Context, inventoryID string) (*RatingSummary, error)
 }

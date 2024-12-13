@@ -407,7 +407,7 @@ type RatingSummary struct {
 	AverageRating float64 `json:"average_rating"`
 }
 
-func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
+func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error) {
 	offset := (page - 1) * limit // Calculate offset
 
 	var totalRows int32 // Variable to hold the total count

@@ -849,8 +849,22 @@ func (i *InventoryServer) ReplyInventoryRating(ctx context.Context, req *invento
 	select {
 	case data := <-resultCh:
 
-		log.Println(data)
-		return nil, nil
+		var parentReplyID string
+		if data.ParentReplyID != nil {
+			parentReplyID = *data.ParentReplyID
+		} else {
+			parentReplyID = "" // Default value for nil
+		}
+
+		return &inventory.ReplyToRatingResponse{
+			Id:             data.ID,
+			RatingId:       data.RatingID,
+			ReplierId:      data.ReplierID,
+			ParentReplyId:  parentReplyID,
+			Comment:        data.Comment,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+		}, nil
 
 	case err := <-errCh:
 		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
@@ -888,8 +902,22 @@ func (i *InventoryServer) ReplyUserRating(ctx context.Context, req *inventory.Re
 	select {
 	case data := <-resultCh:
 
-		log.Println(data)
-		return nil, nil
+		var parentReplyID string
+		if data.ParentReplyID != nil {
+			parentReplyID = *data.ParentReplyID
+		} else {
+			parentReplyID = "" // Default value for nil
+		}
+
+		return &inventory.ReplyToRatingResponse{
+			Id:             data.ID,
+			RatingId:       data.RatingID,
+			ReplierId:      data.ReplierID,
+			ParentReplyId:  parentReplyID,
+			Comment:        data.Comment,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+		}, nil
 
 	case err := <-errCh:
 		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))

@@ -603,12 +603,25 @@ type ReplyRatingPayload struct {
 
 func (u *PostgresRepository) CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error) {
 
+	// Convert empty ParentReplyID to nil for UUID compatibility
+	var parentReplyID *string
+	if param.ParentReplyID != "" {
+		parentReplyID = &param.ParentReplyID
+	}
+
 	query := `INSERT INTO inventory_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
-	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-	RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+              RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	stmt, err := u.Conn.PrepareContext(ctx, query) // create a prepared statement for later execution
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close() // closes when the statement has been executed
 
 	var inventoryRatingReply InventoryRatingReply
-	err := u.Conn.QueryRowContext(ctx, query, param.RatingID, param.ReplierID, param.ParentReplyID, param.Comment).Scan(
+	err = stmt.QueryRowContext(ctx, param.RatingID, param.ReplierID, parentReplyID, param.Comment).Scan(
 		&inventoryRatingReply.ID,
 		&inventoryRatingReply.RatingID,
 		&inventoryRatingReply.ReplierID,
@@ -617,7 +630,9 @@ func (u *PostgresRepository) CreateInventoryRatingReply(ctx context.Context, par
 		&inventoryRatingReply.UpdatedAt,
 		&inventoryRatingReply.CreatedAt,
 	)
+
 	if err != nil {
+		log.Println(err)
 		return nil, fmt.Errorf("failed to create user reply: %w", err)
 	}
 
@@ -627,12 +642,25 @@ func (u *PostgresRepository) CreateInventoryRatingReply(ctx context.Context, par
 
 func (u *PostgresRepository) CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error) {
 
+	// Convert empty ParentReplyID to nil for UUID compatibility
+	var parentReplyID *string
+	if param.ParentReplyID != "" {
+		parentReplyID = &param.ParentReplyID
+	}
+
 	query := `INSERT INTO user_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
-	VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-	RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+              RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	stmt, err := u.Conn.PrepareContext(ctx, query) // create a prepared statement for later execution
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close() // closes when the statement has been executed
 
 	var userRatingReply UserRatingReply
-	err := u.Conn.QueryRowContext(ctx, query, param.RatingID, param.ReplierID, param.ParentReplyID, param.Comment).Scan(
+	err = stmt.QueryRowContext(ctx, param.RatingID, param.ReplierID, parentReplyID, param.Comment).Scan(
 		&userRatingReply.ID,
 		&userRatingReply.RatingID,
 		&userRatingReply.ReplierID,
@@ -641,9 +669,12 @@ func (u *PostgresRepository) CreateUserRatingReply(ctx context.Context, param *R
 		&userRatingReply.UpdatedAt,
 		&userRatingReply.CreatedAt,
 	)
+
 	if err != nil {
+		log.Println(err)
 		return nil, fmt.Errorf("failed to create user reply: %w", err)
 	}
 
 	return &userRatingReply, nil
+
 }

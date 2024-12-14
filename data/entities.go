@@ -91,7 +91,7 @@ type InventoryRatingReply struct {
 	ID            string    `json:"id"`
 	RatingID      string    `json:"rating_id"`
 	ReplierID     string    `json:"replier_id"`
-	ParentReplyID string    `json:"parent_reply_id"`
+	ParentReplyID *string   `json:"parent_reply_id"`
 	Comment       string    `json:"comment"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	CreatedAt     time.Time `json:"created_at"`
@@ -101,7 +101,7 @@ type UserRatingReply struct {
 	ID            string    `json:"id"`
 	RatingID      string    `json:"rating_id"`
 	ReplierID     string    `json:"replier_id"`
-	ParentReplyID string    `json:"parent_reply_id"`
+	ParentReplyID *string   `json:"parent_reply_id"`
 	Comment       string    `json:"comment"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	CreatedAt     time.Time `json:"created_at"`

@@ -791,11 +791,41 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 					LastName:  singleRating.RaterDetails.LastName,
 				},
 			}
+
+			var replies []*inventory.InventoryRatingReplyResponse
+			for _, reply := range singleRating.Replies {
+				replierDetails := &inventory.User{
+					Id:        reply.ReplierDetails.ID,
+					FirstName: reply.ReplierDetails.FirstName,
+					LastName:  reply.ReplierDetails.LastName,
+					Email:     reply.ReplierDetails.Email,
+				}
+
+				var parentReplyID string
+				if reply.ParentReplyID != nil {
+					parentReplyID = *reply.ParentReplyID
+				} else {
+					parentReplyID = "" // Default value for nil
+				}
+
+				replies = append(replies, &inventory.InventoryRatingReplyResponse{
+					Id:             reply.ID,
+					ParentReplyId:  parentReplyID,
+					Comment:        reply.Comment,
+					CreatedAtHuman: formatTimestamp(timestamppb.New(reply.CreatedAt)),
+					UpdatedAtHuman: formatTimestamp(timestamppb.New(reply.UpdatedAt)),
+					Replier:        replierDetails,
+				})
+			}
+
+			rating.Replies = replies
 			allInventoryRating = append(allInventoryRating, rating)
 		}
 
 		summary, err := i.Models.GetInventoryRatingSummary(timeoutCtx, req.Id.Id)
 		if err != nil {
+			log.Println(err, "EROOR FETCHING SUMMARY")
+			log.Println(req.Id.Id, "EROOR THE ID")
 			return nil, fmt.Errorf("error retrieving rating summary for user")
 		}
 

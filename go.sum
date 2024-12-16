@@ -120,6 +120,16 @@ github.com/obynonwane/rental-service-proto v0.0.0-20241212125419-fd3407f66fca h1
 github.com/obynonwane/rental-service-proto v0.0.0-20241212125419-fd3407f66fca/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/obynonwane/rental-service-proto v0.0.0-20241213131108-5217931d2883 h1:rJngOKFMZpdsGuC6vt1CGUuqMIeOZYwyU6xJ301GiKc=
 github.com/obynonwane/rental-service-proto v0.0.0-20241213131108-5217931d2883/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216120125-2f9faf39cd78 h1:kOUx3jy06ucNPYqyxMD2Lk2N6jveX+ZA4NhGghBJUAM=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216120125-2f9faf39cd78/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216121843-3cd667e1c1a9 h1:0MVZMHxOwdUNNMr8pwQaFmFkOr3z87NKp20rs+wdVEE=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216121843-3cd667e1c1a9/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216123959-f83f5a1c8b04 h1:BKqW4hoGFOElmdWsf7xv4X/x9D5SMGM0irABW7m5keI=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216123959-f83f5a1c8b04/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216124654-00df257edec2 h1:dk9rUtwznZ6DJ+w9hAUZmKqP2N8t6nTn+3ZXmwSB0q8=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216124654-00df257edec2/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216124914-65cd75e26719 h1:29JBNsfKRA4X3sahP3MGg1EoR7QltJnnmsA5pslkygE=
+github.com/obynonwane/rental-service-proto v0.0.0-20241216124914-65cd75e26719/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

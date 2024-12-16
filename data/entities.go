@@ -65,15 +65,16 @@ type InventoryImage struct {
 }
 
 type InventoryRating struct {
-	ID           string    `json:"id"`
-	InventoryId  string    `json:"inventory_id"`
-	UserId       string    `json:"user_id"`
-	RaterId      string    `json:"rater_id"`
-	Rating       int32     `json:"rating"`
-	Comment      string    `json:"comment"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	RaterDetails User      `json:"rater_details"`
+	ID           string                 `json:"id"`
+	InventoryId  string                 `json:"inventory_id"`
+	UserId       string                 `json:"user_id"`
+	RaterId      string                 `json:"rater_id"`
+	Rating       int32                  `json:"rating"`
+	Comment      string                 `json:"comment"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	CreatedAt    time.Time              `json:"created_at"`
+	RaterDetails User                   `json:"rater_details"`
+	Replies      []InventoryRatingReply `json:"replies"`
 }
 
 type UserRating struct {
@@ -88,13 +89,14 @@ type UserRating struct {
 }
 
 type InventoryRatingReply struct {
-	ID            string    `json:"id"`
-	RatingID      string    `json:"rating_id"`
-	ReplierID     string    `json:"replier_id"`
-	ParentReplyID *string   `json:"parent_reply_id"`
-	Comment       string    `json:"comment"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	RatingID       string    `json:"rating_id"`
+	ReplierID      string    `json:"replier_id"`
+	ParentReplyID  *string   `json:"parent_reply_id"`
+	Comment        string    `json:"comment"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	CreatedAt      time.Time `json:"created_at"`
+	ReplierDetails User      `json:"replier_details"`
 }
 
 type UserRatingReply struct {

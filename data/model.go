@@ -370,7 +370,9 @@ func (u *PostgresRepository) CreateUserRating(
 }
 
 func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
+
 	query := `SELECT id, email, first_name, last_name, phone, verified, updated_at, created_at FROM users WHERE id = $1`
+
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
 	var user User
@@ -407,6 +409,164 @@ type RatingSummary struct {
 	AverageRating float64 `json:"average_rating"`
 }
 
+// func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error) {
+// 	offset := (page - 1) * limit // Calculate offset
+
+// 	var totalRows int32 // Variable to hold the total count
+
+// 	// Query to count total rows
+// 	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE inventory_id = $1"
+// 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+// 	if err := row.Scan(&totalRows); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Query to fetch ratings and rater details
+// 	query := `SELECT
+//                   ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
+//                   u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
+//               FROM inventory_ratings ir
+//               JOIN users u ON ir.rater_id = u.id
+//               WHERE ir.inventory_id = $1
+//               ORDER BY ir.created_at DESC
+//               LIMIT $2 OFFSET $3`
+
+// 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+// 	if err != nil {
+// 		log.Println(err, "ERROR")
+// 		return nil, 0, err
+// 	}
+// 	defer rows.Close()
+
+// 	var ratings []*InventoryRating
+
+// 	// Iterate through the result set
+// 	for rows.Next() {
+// 		var ratingWithRater InventoryRating
+// 		err := rows.Scan(
+// 			&ratingWithRater.ID,
+// 			&ratingWithRater.InventoryId,
+// 			&ratingWithRater.UserId,
+// 			&ratingWithRater.RaterId,
+// 			&ratingWithRater.Rating,
+// 			&ratingWithRater.Comment,
+// 			&ratingWithRater.UpdatedAt,
+// 			&ratingWithRater.CreatedAt,
+// 			&ratingWithRater.RaterDetails.ID,
+// 			&ratingWithRater.RaterDetails.FirstName,
+// 			&ratingWithRater.RaterDetails.LastName,
+// 			&ratingWithRater.RaterDetails.Email,
+// 			&ratingWithRater.RaterDetails.Phone,
+// 		)
+// 		if err != nil {
+// 			log.Println("Error scanning", err)
+// 			return nil, 0, err
+// 		}
+
+// 		ratings = append(ratings, &ratingWithRater)
+// 	}
+
+// 	// Check for errors encountered during iteration
+// 	if err := rows.Err(); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	return ratings, totalRows, nil
+// }
+
+// func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error) {
+// 	offset := (page - 1) * limit // Calculate offset
+
+// 	var totalRows int32 // Variable to hold the total count
+
+// 	// Query to count total rows
+// 	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE inventory_id = $1"
+// 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+// 	if err := row.Scan(&totalRows); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Query to fetch ratings, rater details, and replies
+// 	query := `
+// 		SELECT
+// 			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
+// 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone,
+// 			COALESCE(
+// 				JSON_AGG(
+// 					JSON_BUILD_OBJECT(
+// 						'id', irr.id,
+// 						'rating_id', irr.rating_id,
+// 						'replier_id', irr.replier_id,
+// 						'parent_reply_id', irr.parent_reply_id,
+// 						'comment', irr.comment,
+// 						'updated_at', irr.updated_at,
+// 						'created_at', irr.created_at
+// 					)
+// 				) FILTER (WHERE irr.id IS NOT NULL), '[]'
+// 			) AS replies
+// 		FROM inventory_ratings ir
+// 		JOIN users u ON ir.rater_id = u.id
+// 		LEFT JOIN inventory_rating_replies irr ON irr.rating_id = ir.id
+// 		WHERE ir.inventory_id = $1
+// 		GROUP BY ir.id, u.id
+// 		ORDER BY ir.created_at DESC
+// 		LIMIT $2 OFFSET $3
+// 	`
+
+// 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+// 	if err != nil {
+// 		log.Println(err, "ERROR")
+// 		return nil, 0, err
+// 	}
+// 	defer rows.Close()
+
+// 	var ratings []*InventoryRating
+
+// 	// Iterate through the result set
+// 	for rows.Next() {
+// 		var ratingWithRater InventoryRating
+// 		var repliesJSON string
+
+// 		err := rows.Scan(
+// 			&ratingWithRater.ID,
+// 			&ratingWithRater.InventoryId,
+// 			&ratingWithRater.UserId,
+// 			&ratingWithRater.RaterId,
+// 			&ratingWithRater.Rating,
+// 			&ratingWithRater.Comment,
+// 			&ratingWithRater.UpdatedAt,
+// 			&ratingWithRater.CreatedAt,
+// 			&ratingWithRater.RaterDetails.ID,
+// 			&ratingWithRater.RaterDetails.FirstName,
+// 			&ratingWithRater.RaterDetails.LastName,
+// 			&ratingWithRater.RaterDetails.Email,
+// 			&ratingWithRater.RaterDetails.Phone,
+// 			&repliesJSON, // JSON string of replies
+// 		)
+// 		if err != nil {
+// 			log.Println("Error scanning", err)
+// 			return nil, 0, err
+// 		}
+
+// 		// Parse replies JSON into a slice
+// 		var replies []InventoryRatingReply
+// 		if err := json.Unmarshal([]byte(repliesJSON), &replies); err != nil {
+// 			log.Println("Error unmarshalling replies", err)
+// 			return nil, 0, err
+// 		}
+// 		ratingWithRater.Replies = replies
+
+// 		ratings = append(ratings, &ratingWithRater)
+// 	}
+
+// 	// Check for errors encountered during iteration
+// 	if err := rows.Err(); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	return ratings, totalRows, nil
+// }
+
 func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string, page int32, limit int32) ([]*InventoryRating, int32, error) {
 	offset := (page - 1) * limit // Calculate offset
 
@@ -414,24 +574,46 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 
 	// Query to count total rows
 	countQuery := "SELECT COUNT(*) FROM inventory_ratings WHERE inventory_id = $1"
+
 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+
 	if err := row.Scan(&totalRows); err != nil {
+		log.Println(err, "ERROR 2")
 		return nil, 0, err
 	}
 
-	// Query to fetch ratings and rater details
-	query := `SELECT 
-                  ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
-                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
-              FROM inventory_ratings ir
-              JOIN users u ON ir.rater_id = u.id
-              WHERE ir.inventory_id = $1
-              ORDER BY ir.created_at DESC
-              LIMIT $2 OFFSET $3`
+	// Query to fetch ratings, rater details, and replies
+	query := `
+		SELECT 
+			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
+			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone,
+			COALESCE(
+				JSON_AGG(
+					JSON_BUILD_OBJECT(
+						'id', irr.id,
+						'rating_id', irr.rating_id,
+						'replier_id', irr.replier_id,
+						'parent_reply_id', irr.parent_reply_id,
+						'comment', irr.comment,
+						'updated_at', irr.updated_at,
+						'created_at', irr.created_at
+					)
+				) FILTER (WHERE irr.id IS NOT NULL), '[]'
+			) AS replies
+		FROM inventory_ratings ir
+		JOIN users u ON ir.rater_id = u.id
+		LEFT JOIN inventory_rating_replies irr ON irr.rating_id = ir.id
+		WHERE ir.inventory_id = $1
+		GROUP BY ir.id, u.id
+		ORDER BY ir.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
 
+	// stmt.QueryRowContext
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+
 	if err != nil {
-		log.Println(err, "ERROR")
+		log.Println(err, "ERROR 4")
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -441,6 +623,8 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	// Iterate through the result set
 	for rows.Next() {
 		var ratingWithRater InventoryRating
+		var repliesJSON string
+
 		err := rows.Scan(
 			&ratingWithRater.ID,
 			&ratingWithRater.InventoryId,
@@ -455,17 +639,41 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			&ratingWithRater.RaterDetails.LastName,
 			&ratingWithRater.RaterDetails.Email,
 			&ratingWithRater.RaterDetails.Phone,
+			&repliesJSON, // JSON string of replies
 		)
 		if err != nil {
 			log.Println("Error scanning", err)
 			return nil, 0, err
 		}
 
+		// Parse replies JSON into a slice of replies
+		var replies []InventoryRatingReply
+		if err := json.Unmarshal([]byte(repliesJSON), &replies); err != nil {
+			log.Println("Error unmarshalling replies", err)
+			return nil, 0, err
+		}
+
+		// For each reply, include replier details
+		for i, reply := range replies {
+			// Fetch replier details (this assumes you have a function to get replier details by ID)
+			replierDetails, err := u.GetUserByID(ctx, reply.ReplierID)
+			if err != nil {
+				log.Printf("Error fetching replier details for reply %s: %v", reply.ID, err)
+				return nil, 0, err
+			}
+			replies[i].ReplierDetails = *replierDetails // Populate replier details
+		}
+
+		// Assign replies to rating
+		ratingWithRater.Replies = replies
+
+		// Add the rating to the ratings slice
 		ratings = append(ratings, &ratingWithRater)
 	}
 
 	// Check for errors encountered during iteration
 	if err := rows.Err(); err != nil {
+		log.Println(err, "ERROR 5")
 		return nil, 0, err
 	}
 
@@ -582,6 +790,7 @@ func (u *PostgresRepository) GetInventoryRatingSummary(ctx context.Context, inve
 	var summaryJSON []byte
 	err := row.Scan(&summaryJSON)
 	if err != nil {
+		log.Println(err, "Error GetInventoryRatingSummary Model")
 		return nil, err
 	}
 
@@ -592,4 +801,89 @@ func (u *PostgresRepository) GetInventoryRatingSummary(ctx context.Context, inve
 	}
 
 	return &summary, nil
+}
+
+type ReplyRatingPayload struct {
+	RatingID      string `json:"rating_id"`
+	ReplierID     string `json:"replier_id"`
+	Comment       string `json:"comment"`
+	ParentReplyID string `json:"parent_reply_id"`
+}
+
+func (u *PostgresRepository) CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error) {
+
+	// Convert empty ParentReplyID to nil for UUID compatibility
+	var parentReplyID *string
+	if param.ParentReplyID != "" {
+		parentReplyID = &param.ParentReplyID
+	}
+
+	query := `INSERT INTO inventory_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+              RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	stmt, err := u.Conn.PrepareContext(ctx, query) // create a prepared statement for later execution
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close() // closes when the statement has been executed
+
+	var inventoryRatingReply InventoryRatingReply
+	err = stmt.QueryRowContext(ctx, param.RatingID, param.ReplierID, parentReplyID, param.Comment).Scan(
+		&inventoryRatingReply.ID,
+		&inventoryRatingReply.RatingID,
+		&inventoryRatingReply.ReplierID,
+		&inventoryRatingReply.ParentReplyID,
+		&inventoryRatingReply.Comment,
+		&inventoryRatingReply.UpdatedAt,
+		&inventoryRatingReply.CreatedAt,
+	)
+
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to create user reply: %w", err)
+	}
+
+	return &inventoryRatingReply, nil
+
+}
+
+func (u *PostgresRepository) CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error) {
+
+	// Convert empty ParentReplyID to nil for UUID compatibility
+	var parentReplyID *string
+	if param.ParentReplyID != "" {
+		parentReplyID = &param.ParentReplyID
+	}
+
+	query := `INSERT INTO user_rating_replies (rating_id, replier_id, parent_reply_id, comment, updated_at, created_at)
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+              RETURNING id, rating_id, replier_id, parent_reply_id, comment, updated_at, created_at`
+
+	stmt, err := u.Conn.PrepareContext(ctx, query) // create a prepared statement for later execution
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close() // closes when the statement has been executed
+
+	var userRatingReply UserRatingReply
+	err = stmt.QueryRowContext(ctx, param.RatingID, param.ReplierID, parentReplyID, param.Comment).Scan(
+		&userRatingReply.ID,
+		&userRatingReply.RatingID,
+		&userRatingReply.ReplierID,
+		&userRatingReply.ParentReplyID,
+		&userRatingReply.Comment,
+		&userRatingReply.UpdatedAt,
+		&userRatingReply.CreatedAt,
+	)
+
+	if err != nil {
+		log.Println(err)
+		return nil, fmt.Errorf("failed to create user reply: %w", err)
+	}
+
+	return &userRatingReply, nil
+
 }

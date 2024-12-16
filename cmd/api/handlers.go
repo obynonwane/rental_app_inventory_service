@@ -791,11 +791,41 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 					LastName:  singleRating.RaterDetails.LastName,
 				},
 			}
+
+			var replies []*inventory.InventoryRatingReplyResponse
+			for _, reply := range singleRating.Replies {
+				replierDetails := &inventory.User{
+					Id:        reply.ReplierDetails.ID,
+					FirstName: reply.ReplierDetails.FirstName,
+					LastName:  reply.ReplierDetails.LastName,
+					Email:     reply.ReplierDetails.Email,
+				}
+
+				var parentReplyID string
+				if reply.ParentReplyID != nil {
+					parentReplyID = *reply.ParentReplyID
+				} else {
+					parentReplyID = "" // Default value for nil
+				}
+
+				replies = append(replies, &inventory.InventoryRatingReplyResponse{
+					Id:             reply.ID,
+					ParentReplyId:  parentReplyID,
+					Comment:        reply.Comment,
+					CreatedAtHuman: formatTimestamp(timestamppb.New(reply.CreatedAt)),
+					UpdatedAtHuman: formatTimestamp(timestamppb.New(reply.UpdatedAt)),
+					Replier:        replierDetails,
+				})
+			}
+
+			rating.Replies = replies
 			allInventoryRating = append(allInventoryRating, rating)
 		}
 
 		summary, err := i.Models.GetInventoryRatingSummary(timeoutCtx, req.Id.Id)
 		if err != nil {
+			log.Println(err, "EROOR FETCHING SUMMARY")
+			log.Println(req.Id.Id, "EROOR THE ID")
 			return nil, fmt.Errorf("error retrieving rating summary for user")
 		}
 
@@ -811,6 +841,112 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 				OneStar:       summary.OneStar,
 				AverageRating: summary.AverageRating,
 			},
+		}, nil
+
+	case err := <-errCh:
+		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
+		return nil, fmt.Errorf("error fetching inventory ratings")
+	case <-ctx.Done():
+		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
+	}
+}
+
+func (i *InventoryServer) ReplyInventoryRating(ctx context.Context, req *inventory.ReplyToRatingRequest) (*inventory.ReplyToRatingResponse, error) {
+	// Result and error channels
+	resultCh := make(chan *data.InventoryRatingReply, 1)
+	errCh := make(chan error, 1)
+
+	// Timeout context
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	param := &data.ReplyRatingPayload{
+		RatingID:      req.RatingId,
+		ReplierID:     req.ReplierId,
+		Comment:       req.Comment,
+		ParentReplyID: req.ParentReplyId,
+	}
+
+	go func(param *data.ReplyRatingPayload) {
+		result, err := i.Models.CreateInventoryRatingReply(timeoutCtx, param)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resultCh <- result
+	}(param)
+
+	select {
+	case data := <-resultCh:
+
+		var parentReplyID string
+		if data.ParentReplyID != nil {
+			parentReplyID = *data.ParentReplyID
+		} else {
+			parentReplyID = "" // Default value for nil
+		}
+
+		return &inventory.ReplyToRatingResponse{
+			Id:             data.ID,
+			RatingId:       data.RatingID,
+			ReplierId:      data.ReplierID,
+			ParentReplyId:  parentReplyID,
+			Comment:        data.Comment,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+		}, nil
+
+	case err := <-errCh:
+		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
+		return nil, fmt.Errorf("error fetching inventory ratings")
+	case <-ctx.Done():
+		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
+	}
+}
+
+func (i *InventoryServer) ReplyUserRating(ctx context.Context, req *inventory.ReplyToRatingRequest) (*inventory.ReplyToRatingResponse, error) {
+	// Result and error channels
+	resultCh := make(chan *data.UserRatingReply, 1)
+	errCh := make(chan error, 1)
+
+	// Timeout context
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	param := &data.ReplyRatingPayload{
+		RatingID:      req.RatingId,
+		ReplierID:     req.ReplierId,
+		Comment:       req.Comment,
+		ParentReplyID: req.ParentReplyId,
+	}
+
+	go func(param *data.ReplyRatingPayload) {
+		result, err := i.Models.CreateUserRatingReply(timeoutCtx, param)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resultCh <- result
+	}(param)
+
+	select {
+	case data := <-resultCh:
+
+		var parentReplyID string
+		if data.ParentReplyID != nil {
+			parentReplyID = *data.ParentReplyID
+		} else {
+			parentReplyID = "" // Default value for nil
+		}
+
+		return &inventory.ReplyToRatingResponse{
+			Id:             data.ID,
+			RatingId:       data.RatingID,
+			ReplierId:      data.ReplierID,
+			ParentReplyId:  parentReplyID,
+			Comment:        data.Comment,
+			CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
+			UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
 		}, nil
 
 	case err := <-errCh:

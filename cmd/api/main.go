@@ -13,7 +13,6 @@ import (
 	_ "github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/joho/godotenv"
 	"github.com/obynonwane/inventory-service/data"
 )
 
@@ -117,24 +116,6 @@ func connectToDB() *sql.DB {
 
 func DbConnectionDetails() string {
 
-	environment := os.Getenv("DEV_ENV")
-
-	// Load .env file only if NOT running in Kubernetes
-	if environment == "" || environment == "local" {
-		err := godotenv.Load(".env")
-		if err != nil {
-			log.Println("No .env file found, relying on system environment variables")
-		}
-
-		// Load environment-specific .env file
-		if environment == "test" {
-			err = godotenv.Load(".env.test")
-			if err != nil {
-				log.Println("No .env.test file found")
-			}
-		}
-	}
-
 	host := os.Getenv("DATABASE_HOST")
 	port := os.Getenv("DATABASE_PORT")
 	user := os.Getenv("DATABASE_USER")
@@ -149,7 +130,6 @@ func DbConnectionDetails() string {
 		host, port, user, password, dbname, sslmode, timezone, connectTimeout,
 	)
 
-	log.Println(environment, "GO ENVIRONMENT")
 	return connStr
 }
 

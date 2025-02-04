@@ -112,23 +112,26 @@ func connectToDB() *sql.DB {
 		time.Sleep(2 * time.Second)
 		continue
 	}
+
 }
 
 func DbConnectionDetails() string {
 
 	environment := os.Getenv("DEV_ENV")
 
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("No .env file found")
-	}
-
-	// Load environment-specific .env file
-	goEnv := os.Getenv("DEV_ENV")
-	if goEnv == "test" {
-		err = godotenv.Load(".env.test")
+	// Load .env file only if NOT running in Kubernetes
+	if environment == "" || environment == "local" {
+		err := godotenv.Load(".env")
 		if err != nil {
-			log.Println("No .env.test file found")
+			log.Println("No .env file found, relying on system environment variables")
+		}
+
+		// Load environment-specific .env file
+		if environment == "test" {
+			err = godotenv.Load(".env.test")
+			if err != nil {
+				log.Println("No .env.test file found")
+			}
 		}
 	}
 

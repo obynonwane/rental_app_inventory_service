@@ -207,7 +207,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		}()
 
 		// Save product details and images in the database (if applicable)
-		err = i.Models.CreateInventory(tx, dbCtx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, urls)
+		err = i.Models.CreateInventory(tx, dbCtx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, req.CountryId, req.StateId, req.LgaId, urls)
 		if err != nil {
 			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
 			return

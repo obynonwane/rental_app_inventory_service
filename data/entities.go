@@ -51,6 +51,9 @@ type Inventory struct {
 	Deactivated   bool             `json:"deactivated"`
 	CreatedAt     time.Time        `json:"created_at"`
 	UpdatedAt     time.Time        `json:"updated_at"`
+	CountryId     string           `json:"country_id"`
+	StateId       string           `json:"state_id"`
+	LgaId         string           `json:"lga_id"`
 	Images        []InventoryImage `json:"images"` // One-to-many relationship
 	User          User             `json:"user"`
 }

@@ -126,7 +126,7 @@ func DbConnectionDetails() string {
 	connectTimeout := os.Getenv("DATABASE_CONNECT_TIMEOUT")
 
 	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s timezone=%s connect_timeout=%s",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s timezone=%s connect_timeout=%s prefer_simple_protocol=true",
 		host, port, user, password, dbname, sslmode, timezone, connectTimeout,
 	)
 

@@ -24,4 +24,5 @@ type Repository interface {
 	GetInventoryRatingSummary(ctx context.Context, inventoryID string) (*RatingSummary, error)
 	CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error)
 	CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error)
+	SearchInventory(ctx context.Context, param *SearchPayload) (*InventoryCollection, error)
 }

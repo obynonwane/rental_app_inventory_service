@@ -7,7 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+
 	"time"
+
+	"github.com/lib/pq"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/obynonwane/rental-service-proto/inventory"
 )
 
 // db timeout period
@@ -725,4 +732,214 @@ func (u *PostgresRepository) CreateUserRatingReply(ctx context.Context, param *R
 
 	return &userRatingReply, nil
 
+}
+
+// InventoryCollection matches your proto message.
+type InventoryCollection struct {
+	Inventories []*inventory.Inventory
+	TotalCount  int32
+	Offset      int32
+	Limit       int32
+}
+
+type SearchPayload struct {
+	CountryID string `json:"country_id"`
+	StateID   string `json:"state_id"`
+	LgaID     string `json:"lga_id"`
+	Text      string `json:"text"`
+	Limit     string `json:"limit"`
+	Offset    string `json:"offet,"`
+}
+
+// SearchInventories performs an offset-based paginated search against the inventories table
+func (r *PostgresRepository) SearchInventory(
+	ctx context.Context,
+	p *SearchPayload,
+) (*InventoryCollection, error) {
+
+	// apply a timeout to the context
+	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
+	defer cancel()
+
+	// 0) parse limit & offset (default to 20/0 if empty)
+	var err error
+	var limit, offset int
+	if p.Limit == "" {
+		limit = 20
+	} else {
+		limit, err = strconv.Atoi(p.Limit)
+		if err != nil {
+			return nil, fmt.Errorf("invalid limit %q: %w", p.Limit, err)
+		}
+	}
+	if p.Offset == "" {
+		offset = 0
+	} else {
+		offset, err = strconv.Atoi(p.Offset)
+		if err != nil {
+			return nil, fmt.Errorf("invalid offset %q: %w", p.Offset, err)
+		}
+	}
+
+	// 1) Get total count matching filters
+	var total int32
+	countSQL := `
+	SELECT COUNT(*)
+	FROM inventories l
+	WHERE l.country_id = $1
+	  AND l.state_id   = $2
+	  AND l.lga_id     = $3
+	  AND to_tsvector('english', coalesce(l.name,'') || ' ' || coalesce(l.description,''))
+	      @@ plainto_tsquery('english', $4)
+	`
+	if err := r.Conn.QueryRowContext(
+		ctx, countSQL,
+		p.CountryID,
+		p.StateID,
+		p.LgaID,
+		p.Text,
+	).Scan(&total); err != nil {
+		return nil, fmt.Errorf("count inventories: %w", err)
+	}
+
+	// 2) Fetch page of inventory rows with joins
+	selectSQL := `
+	SELECT
+	  l.id,
+	  l.name,
+	  l.description,
+	  l.user_id,
+	  l.category_id,
+	  l.subcategory_id,
+	  l.promoted,
+	  l.deactivated,
+	  l.created_at,
+	  l.updated_at,
+	  l.country_id,
+	  co.name   AS country_name,
+	  l.state_id,
+	  st.name   AS state_name,
+	  l.lga_id,
+	  la.name   AS lga_name,
+	  u.id,
+  	  u.email,
+      u.first_name,
+      u.last_name,
+      u.phone
+	FROM inventories l
+	JOIN countries co ON l.country_id = co.id
+	JOIN states st    ON l.state_id   = st.id
+	JOIN lgas la      ON l.lga_id     = la.id
+	JOIN users u ON l.user_id = u.id
+	WHERE l.country_id = $1
+	  AND l.state_id   = $2
+	  AND l.lga_id     = $3
+	  AND to_tsvector('english', coalesce(l.name,'') || ' ' || coalesce(l.description,''))
+	      @@ plainto_tsquery('english', $4)
+	ORDER BY l.created_at DESC
+	LIMIT  $5
+	OFFSET $6
+	`
+	rows, err := r.Conn.QueryContext(
+		ctx, selectSQL,
+		p.CountryID,
+		p.StateID,
+		p.LgaID,
+		p.Text,
+		limit,
+		offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("select inventories: %w", err)
+	}
+	defer rows.Close()
+
+	var (
+		page []*inventory.Inventory
+		ids  []string
+	)
+	for rows.Next() {
+		inv := &inventory.Inventory{
+			Country: &inventory.Country{},
+			State:   &inventory.State{},
+			Lga:     &inventory.LGA{},
+			Images:  []*inventory.InventoryImage{},
+			User:    &inventory.User{},
+		}
+
+		var createdAt, updatedAt time.Time
+
+		if err := rows.Scan(
+			&inv.Id,
+			&inv.Name,
+			&inv.Description,
+			&inv.UserId,
+			&inv.CategoryId,
+			&inv.SubcategoryId,
+			&inv.Promoted,
+			&inv.Deactivated,
+			&createdAt,
+			&updatedAt,
+			&inv.CountryId,
+			&inv.Country.Name,
+			&inv.StateId,
+			&inv.State.Name,
+			&inv.LgaId,
+			&inv.Lga.Name,
+			&inv.User.Id,
+			&inv.User.Email,
+			&inv.User.FirstName,
+			&inv.User.LastName,
+			&inv.User.Phone,
+		); err != nil {
+			return nil, fmt.Errorf("scan inventory: %w", err)
+		}
+		inv.CreatedAt = timestamppb.New(createdAt)
+		inv.UpdatedAt = timestamppb.New(updatedAt)
+		page = append(page, inv)
+		ids = append(ids, inv.Id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// 3) Batch fetch images
+	if len(ids) > 0 {
+		imgSQL := `
+		SELECT id, live_url, local_url, inventory_id, created_at, updated_at
+		FROM inventory_images
+		WHERE inventory_id = ANY($1)
+		`
+		imgRows, err := r.Conn.QueryContext(ctx, imgSQL, pq.Array(ids))
+		if err != nil {
+			return nil, fmt.Errorf("select images: %w", err)
+		}
+		defer imgRows.Close()
+
+		imgMap := make(map[string][]*inventory.InventoryImage)
+		for imgRows.Next() {
+			img := &inventory.InventoryImage{}
+			var createdAt, updatedAt time.Time
+			if err := imgRows.Scan(
+				&img.Id, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
+				&createdAt, &updatedAt,
+			); err != nil {
+				return nil, fmt.Errorf("scan image: %w", err)
+			}
+			img.CreatedAt = timestamppb.New(createdAt)
+			img.UpdatedAt = timestamppb.New(updatedAt)
+			imgMap[img.InventoryId] = append(imgMap[img.InventoryId], img)
+		}
+		for _, inv := range page {
+			inv.Images = imgMap[inv.Id]
+		}
+	}
+
+	// 4) Return the assembled InventoryCollection
+	return &InventoryCollection{
+		Inventories: page,
+		TotalCount:  total,
+		Offset:      int32(offset),
+		Limit:       int32(limit),
+	}, nil
 }

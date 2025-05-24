@@ -15,6 +15,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          go mod tidy
+          go mod vendor
+
+      # Debugging step to inspect environment
+      - name: Debug Log
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "List files in workspace:"
+          ls -al
+          echo "Environment variables:"
+          env
+
+      # Build broker binary using Makefile
+      - name: Build Inventory Binary
+        run: make build_inventory_service
+
       # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -30,4 +56,4 @@ jobs:
       # Push the Docker image to Docker Hub
       - name: Push Docker Image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0
+          docker push ${{ secrets.DOCKER_USERNAME }}/rental-inventory-service:1.0.0 

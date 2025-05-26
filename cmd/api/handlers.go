@@ -959,58 +959,6 @@ func (i *InventoryServer) ReplyUserRating(ctx context.Context, req *inventory.Re
 	}
 }
 
-// func (i *InventoryServer) SearchInventory(ctx context.Context, req *inventory.SearchInventoryRequest) (*inventory.InventoryCollection, error) {
-
-// 	// Result and error channels
-// 	resultCh := make(chan any, 1)
-// 	errCh := make(chan error, 1)
-
-// 	// Timeout context
-// 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-// 	defer cancel()
-
-// 	param := &data.SearchPayload{
-// 		CountryID: req.CountryId,
-// 		StateID:   req.StateId,
-// 		LgaID:     req.LgaId,
-// 		Text:      req.Text,
-// 		Limit:     req.Limit,
-// 		Offset:    req.Offset,
-// 	}
-
-// 	go func(param *data.SearchPayload) {
-// 		result, err := i.Models.SearchInventory(timeoutCtx, param)
-// 		if err != nil {
-// 			errCh <- err
-// 			return
-// 		}
-// 		resultCh <- result
-// 	}(param)
-
-// 	select {
-// 	case data := <-resultCh:
-
-// 		log.Println(data)
-
-// 		// return &inventory.InventoryCollection{
-// 		// 	Id:             data.ID,
-// 		// 	RatingId:       data.RatingID,
-// 		// 	ReplierId:      data.ReplierID,
-// 		// 	ParentReplyId:  parentReplyID,
-// 		// 	Comment:        data.Comment,
-// 		// 	CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
-// 		// 	UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
-// 		// }, nil
-
-// 	case err := <-errCh:
-// 		log.Println(fmt.Errorf("error fetching inventory ratings: %v", err))
-// 		return nil, fmt.Errorf("error fetching inventory ratings")
-// 	case <-ctx.Done():
-// 		return nil, fmt.Errorf("request timed out while fetching inventory ratings")
-// 	}
-
-// }
-
 const handlerTimeout = 10 * time.Second
 
 func (s *InventoryServer) SearchInventory(
@@ -1024,15 +972,16 @@ func (s *InventoryServer) SearchInventory(
 
 	// 2) Build your data.SearchPayload (Limit/Offset as strings)
 	param := &data.SearchPayload{
-		CountryID: req.CountryId,
-		StateID:   req.StateId,
-		LgaID:     req.LgaId,
-		Text:      req.Text,
-		Limit:     req.Limit,
-		Offset:    req.Offset,
+		CountryID:     req.CountryId,
+		StateID:       req.StateId,
+		LgaID:         req.LgaId,
+		Text:          req.Text,
+		Limit:         req.Limit,
+		Offset:        req.Offset,
+		CategoryID:    req.CategoryId,
+		SubcategoryID: req.SubcategoryId,
 	}
 
-	log.Println(param, "THE PARAM")
 	// 3) Call your repo
 	dc, err := s.Models.SearchInventory(ctx, param)
 	if err != nil {
@@ -1048,24 +997,26 @@ func (s *InventoryServer) SearchInventory(
 	}
 	for _, di := range dc.Inventories {
 		inv := &inventory.Inventory{
-			Id:            di.Id,
-			Name:          di.Name,
-			Description:   di.Description,
-			UserId:        di.UserId,
-			CategoryId:    di.CategoryId,
-			SubcategoryId: di.SubcategoryId,
-			Promoted:      di.Promoted,
-			Deactivated:   di.Deactivated,
-			CreatedAt:     timestamppb.New(di.CreatedAt.AsTime()),
-			UpdatedAt:     timestamppb.New(di.UpdatedAt.AsTime()),
-			CountryId:     di.CountryId,
-			Country:       &inventory.Country{Id: di.CountryId, Name: di.Country.Name},
-			StateId:       di.StateId,
-			State:         &inventory.State{Id: di.StateId, Name: di.State.Name, Code: di.State.Code, CountryId: di.State.CountryId},
-			LgaId:         di.LgaId,
-			Lga:           &inventory.LGA{Id: di.LgaId, Name: di.Lga.Name, StateId: di.Lga.StateId},
-			Images:        make([]*inventory.InventoryImage, len(di.Images)),
-			User:          &inventory.User{Id: di.User.Id, FirstName: di.User.FirstName, Email: di.User.Email},
+			Id:             di.Id,
+			Name:           di.Name,
+			Description:    di.Description,
+			UserId:         di.UserId,
+			CategoryId:     di.CategoryId,
+			SubcategoryId:  di.SubcategoryId,
+			Promoted:       di.Promoted,
+			Deactivated:    di.Deactivated,
+			CreatedAt:      di.CreatedAt,
+			UpdatedAt:      di.UpdatedAt,
+			CreatedAtHuman: formatTimestamp(di.CreatedAt),
+			UpdatedAtHuman: formatTimestamp(di.UpdatedAt),
+			CountryId:      di.CountryId,
+			Country:        &inventory.Country{Id: di.CountryId, Name: di.Country.Name},
+			StateId:        di.StateId,
+			State:          &inventory.State{Id: di.StateId, Name: di.State.Name, Code: di.State.Code, CountryId: di.State.CountryId},
+			LgaId:          di.LgaId,
+			Lga:            &inventory.LGA{Id: di.LgaId, Name: di.Lga.Name, StateId: di.Lga.StateId},
+			Images:         make([]*inventory.InventoryImage, len(di.Images)),
+			User:           &inventory.User{Id: di.User.Id, FirstName: di.User.FirstName, Email: di.User.Email, LastName: di.User.LastName, Phone: di.User.Phone},
 		}
 		// map images
 		for i, img := range di.Images {

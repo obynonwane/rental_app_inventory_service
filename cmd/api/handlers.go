@@ -991,9 +991,10 @@ func (s *InventoryServer) SearchInventory(
 
 	// 4) Map data.InventoryCollection → proto.InventoryCollection
 	resp := &inventory.InventoryCollection{
-		TotalCount: dc.TotalCount,
-		Offset:     dc.Offset,
-		Limit:      dc.Limit,
+		Inventories: []*inventory.Inventory{}, // <- explicitly set this
+		TotalCount:  dc.TotalCount,
+		Offset:      dc.Offset,
+		Limit:       dc.Limit,
 	}
 	for _, di := range dc.Inventories {
 		inv := &inventory.Inventory{

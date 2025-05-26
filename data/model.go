@@ -280,9 +280,9 @@ func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, na
 	// Insert image URLs into a separate table
 	for _, url := range urls {
 		imageQuery := `
-				INSERT INTO inventory_images (live_url, inventory_id, updated_at, created_at) 
-				VALUES ($1, $2, NOW(), NOW())`
-		_, err := tx.ExecContext(ctx, imageQuery, url, inventory.ID)
+				INSERT INTO inventory_images (live_url, local_url, inventory_id, updated_at, created_at) 
+				VALUES ($1, $2, $3, NOW(), NOW())`
+		_, err := tx.ExecContext(ctx, imageQuery, url, url, inventory.ID)
 		if err != nil {
 			return fmt.Errorf("failed to insert image URL: %w", err)
 		}

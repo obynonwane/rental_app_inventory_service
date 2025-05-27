@@ -352,19 +352,19 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	// Build query based on provided inputs
 	switch {
 	case inventory_id != "" && slug_ulid != "":
-		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at, offer_price  
 		         FROM inventories 
 		         WHERE id = $1 OR ulid = $2`
 		args = append(args, inventory_id, slug_ulid)
 
 	case inventory_id != "":
-		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at, offer_price  
 		         FROM inventories 
 		         WHERE id = $1`
 		args = append(args, inventory_id)
 
 	case slug_ulid != "":
-		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at, offer_price 
 		         FROM inventories 
 		         WHERE ulid = $1`
 		args = append(args, slug_ulid)
@@ -387,6 +387,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		&inventory.Deactivated,
 		&inventory.UpdatedAt,
 		&inventory.CreatedAt,
+		&inventory.OfferPrice,
 	)
 
 	if err != nil {

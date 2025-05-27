@@ -677,6 +677,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				Deactivated:    data.Deactivated,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
+				OfferPrice:     data.OfferPrice,
 			},
 
 			User: &inventory.User{

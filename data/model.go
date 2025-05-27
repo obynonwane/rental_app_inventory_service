@@ -253,14 +253,31 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 	return &subCategory, nil
 }
 
-func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId string, urls []string) error {
+func (u *PostgresRepository) CreateInventory(
+	tx *sql.Tx,
+	ctx context.Context,
+	name,
+	description,
+	userId,
+	categoryId,
+	subcategoryId,
+	countryId,
+	stateId,
+	lgaId,
+	slug, ulid string,
+	offerPrice float64,
+	urls []string) error {
 
-	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, updated_at, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) 
-			RETURNING id, name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, updated_at, created_at`
+	log.Println(slug, "slug")
+	log.Println(ulid, "ulid")
+	log.Println(offerPrice, "offerprice")
+
+	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, updated_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, NOW(), NOW()) 
+			RETURNING id, name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, updated_at, created_at`
 
 	var inventory Inventory
-	err := tx.QueryRowContext(ctx, query, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId).Scan(
+	err := tx.QueryRowContext(ctx, query, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId, slug, ulid, offerPrice).Scan(
 		&inventory.ID,
 		&inventory.Name,
 		&inventory.Description,
@@ -270,6 +287,9 @@ func (u *PostgresRepository) CreateInventory(tx *sql.Tx, ctx context.Context, na
 		&inventory.CountryId,
 		&inventory.StateId,
 		&inventory.LgaId,
+		&inventory.Slug,
+		&inventory.Ulid,
+		&inventory.OfferPrice,
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,
 	)
@@ -947,11 +967,250 @@ type SearchPayload struct {
 // 	}, nil
 // }
 
+// func (r *PostgresRepository) SearchInventory(
+// 	ctx context.Context,
+// 	p *SearchPayload,
+// ) (*InventoryCollection, error) {
+
+// 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
+// 	defer cancel()
+
+// 	// Parse limit & offset
+// 	limit := 20
+// 	offset := 0
+// 	var err error
+// 	if p.Limit != "" {
+// 		limit, err = strconv.Atoi(p.Limit)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid limit: %w", err)
+// 		}
+// 	}
+// 	if p.Offset != "" {
+// 		offset, err = strconv.Atoi(p.Offset)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid offset: %w", err)
+// 		}
+// 	}
+
+// 	// Build dynamic WHERE clause
+// 	var (
+// 		conditions []string
+// 		args       []interface{}
+// 		argIdx     = 1
+// 	)
+
+// 	if p.CountryID != "" {
+// 		conditions = append(conditions, fmt.Sprintf("l.country_id = $%d", argIdx))
+// 		args = append(args, p.CountryID)
+// 		argIdx++
+// 	}
+// 	if p.StateID != "" {
+// 		conditions = append(conditions, fmt.Sprintf("l.state_id = $%d", argIdx))
+// 		args = append(args, p.StateID)
+// 		argIdx++
+// 	}
+// 	if p.LgaID != "" {
+// 		conditions = append(conditions, fmt.Sprintf("l.lga_id = $%d", argIdx))
+// 		args = append(args, p.LgaID)
+// 		argIdx++
+// 	}
+// 	if p.Text != "" {
+// 		conditions = append(conditions, fmt.Sprintf(`
+// 			to_tsvector('english', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ plainto_tsquery('english', $%d)
+// 		`, argIdx))
+// 		args = append(args, p.Text)
+// 		argIdx++
+// 	}
+// 	if p.CategoryID != "" {
+// 		conditions = append(conditions, fmt.Sprintf("l.category_id = $%d", argIdx))
+// 		args = append(args, p.CategoryID)
+// 		argIdx++
+// 	}
+// 	if p.SubcategoryID != "" {
+// 		conditions = append(conditions, fmt.Sprintf("l.subcategory_id = $%d", argIdx))
+// 		args = append(args, p.SubcategoryID)
+// 		argIdx++
+// 	}
+
+// 	log.Println(args, "the arguments")
+
+// 	whereClause := ""
+// 	if len(conditions) > 0 {
+// 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+// 	}
+
+// 	// Count total results
+// 	var total int32
+// 	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM inventories l %s`, whereClause)
+// 	if err := r.Conn.QueryRowContext(ctx, countSQL, args...).Scan(&total); err != nil {
+// 		return nil, fmt.Errorf("count inventories: %w", err)
+// 	}
+
+// 	// Build SELECT query
+// 	selectSQL := fmt.Sprintf(`
+// 		SELECT
+// 			l.id,
+// 			l.name,
+// 			l.description,
+// 			l.user_id,
+// 			l.category_id,
+// 			l.subcategory_id,
+// 			l.promoted,
+// 			l.deactivated,
+// 			l.created_at,
+// 			l.updated_at,
+// 			l.slug,
+// 			l.ulid,
+// 			l.offer_price,
+// 			l.country_id,
+// 			co.name AS country_name,
+// 			l.state_id,
+// 			st.name AS state_name,
+// 			l.lga_id,
+// 			la.name AS lga_name,
+// 			u.id,
+// 			u.email,
+// 			u.first_name,
+// 			u.last_name,
+// 			u.phone
+// 		FROM inventories l
+// 		LEFT JOIN countries co ON l.country_id = co.id
+// 		LEFT JOIN states st ON l.state_id = st.id
+// 		LEFT JOIN lgas la ON l.lga_id = la.id
+// 		LEFT JOIN users u ON l.user_id = u.id
+// 		%s
+// 		ORDER BY l.created_at DESC
+// 		LIMIT $%d OFFSET $%d
+// 	`, whereClause, argIdx, argIdx+1)
+
+// 	args = append(args, limit, offset)
+
+// 	// Execute SELECT query
+// 	rows, err := r.Conn.QueryContext(ctx, selectSQL, args...)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("select inventories: %w", err)
+// 	}
+// 	defer rows.Close()
+
+// 	// Parse inventory rows
+// 	var (
+// 		page []*inventory.Inventory
+// 		ids  []string
+// 	)
+// 	for rows.Next() {
+// 		inv := &inventory.Inventory{
+// 			Country: &inventory.Country{},
+// 			State:   &inventory.State{},
+// 			Lga:     &inventory.LGA{},
+// 			Images:  []*inventory.InventoryImage{},
+// 			User:    &inventory.User{},
+// 		}
+
+// 		var (
+// 			createdAt, updatedAt time.Time
+// 			slug                 sql.NullString
+// 			ulid                 sql.NullString
+// 			offerPrice           float64
+// 		)
+
+// 		if err := rows.Scan(
+// 			&inv.Id,
+// 			&inv.Name,
+// 			&inv.Description,
+// 			&inv.UserId,
+// 			&inv.CategoryId,
+// 			&inv.SubcategoryId,
+// 			&inv.Promoted,
+// 			&inv.Deactivated,
+// 			&createdAt,
+// 			&updatedAt,
+
+// 			&slug,
+// 			&ulid,
+// 			&offerPrice,
+
+// 			&inv.CountryId,
+// 			&inv.Country.Name,
+// 			&inv.StateId,
+// 			&inv.State.Name,
+// 			&inv.LgaId,
+// 			&inv.Lga.Name,
+// 			&inv.User.Id,
+// 			&inv.User.Email,
+// 			&inv.User.FirstName,
+// 			&inv.User.LastName,
+// 			&inv.User.Phone,
+// 		); err != nil {
+// 			return nil, fmt.Errorf("scan inventory: %w", err)
+// 		}
+
+// 		if slug.Valid {
+// 			inv.Slug = slug.String
+// 		} else {
+// 			inv.Slug = ""
+// 		}
+// 		if ulid.Valid {
+// 			inv.Ulid = ulid.String
+// 		} else {
+// 			inv.Ulid = ""
+// 		}
+
+// 		inv.OfferPrice = offerPrice
+
+// 		inv.CreatedAt = timestamppb.New(createdAt)
+// 		inv.UpdatedAt = timestamppb.New(updatedAt)
+// 		page = append(page, inv)
+// 		ids = append(ids, inv.Id)
+// 	}
+// 	if err := rows.Err(); err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Fetch images in batch
+// 	if len(ids) > 0 {
+// 		imgSQL := `
+// 			SELECT id, live_url, local_url, inventory_id, created_at, updated_at
+// 			FROM inventory_images
+// 			WHERE inventory_id = ANY($1)
+// 		`
+// 		imgRows, err := r.Conn.QueryContext(ctx, imgSQL, pq.Array(ids))
+// 		if err != nil {
+// 			return nil, fmt.Errorf("select images: %w", err)
+// 		}
+// 		defer imgRows.Close()
+
+// 		imgMap := make(map[string][]*inventory.InventoryImage)
+// 		for imgRows.Next() {
+// 			img := &inventory.InventoryImage{}
+// 			var createdAt, updatedAt time.Time
+// 			if err := imgRows.Scan(
+// 				&img.Id, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
+// 				&createdAt, &updatedAt,
+// 			); err != nil {
+// 				return nil, fmt.Errorf("scan image: %w", err)
+// 			}
+// 			img.CreatedAt = timestamppb.New(createdAt)
+// 			img.UpdatedAt = timestamppb.New(updatedAt)
+// 			imgMap[img.InventoryId] = append(imgMap[img.InventoryId], img)
+// 		}
+// 		for _, inv := range page {
+// 			inv.Images = imgMap[inv.Id]
+// 		}
+// 	}
+
+// 	// Return paginated result
+// 	return &InventoryCollection{
+// 		Inventories: page,
+// 		TotalCount:  total,
+// 		Offset:      int32(offset),
+// 		Limit:       int32(limit),
+// 	}, nil
+// }
+
 func (r *PostgresRepository) SearchInventory(
 	ctx context.Context,
 	p *SearchPayload,
 ) (*InventoryCollection, error) {
-
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
@@ -1012,8 +1271,6 @@ func (r *PostgresRepository) SearchInventory(
 		argIdx++
 	}
 
-	log.Println(args, "the arguments")
-
 	whereClause := ""
 	if len(conditions) > 0 {
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
@@ -1026,7 +1283,7 @@ func (r *PostgresRepository) SearchInventory(
 		return nil, fmt.Errorf("count inventories: %w", err)
 	}
 
-	// Build SELECT query
+	// Build SELECT query with LEFT JOINs
 	selectSQL := fmt.Sprintf(`
 		SELECT
 			l.id,
@@ -1039,6 +1296,9 @@ func (r *PostgresRepository) SearchInventory(
 			l.deactivated,
 			l.created_at,
 			l.updated_at,
+			l.slug,
+			l.ulid,
+			l.offer_price,
 			l.country_id,
 			co.name AS country_name,
 			l.state_id,
@@ -1051,10 +1311,10 @@ func (r *PostgresRepository) SearchInventory(
 			u.last_name,
 			u.phone
 		FROM inventories l
-		JOIN countries co ON l.country_id = co.id
-		JOIN states st ON l.state_id = st.id
-		JOIN lgas la ON l.lga_id = la.id
-		JOIN users u ON l.user_id = u.id
+		LEFT JOIN countries co ON l.country_id = co.id
+		LEFT JOIN states st ON l.state_id = st.id
+		LEFT JOIN lgas la ON l.lga_id = la.id
+		LEFT JOIN users u ON l.user_id = u.id
 		%s
 		ORDER BY l.created_at DESC
 		LIMIT $%d OFFSET $%d
@@ -1082,7 +1342,14 @@ func (r *PostgresRepository) SearchInventory(
 			Images:  []*inventory.InventoryImage{},
 			User:    &inventory.User{},
 		}
-		var createdAt, updatedAt time.Time
+
+		var (
+			createdAt, updatedAt time.Time
+			slug                 sql.NullString
+			ulid                 sql.NullString
+			offerPrice           float64
+		)
+
 		if err := rows.Scan(
 			&inv.Id,
 			&inv.Name,
@@ -1094,6 +1361,9 @@ func (r *PostgresRepository) SearchInventory(
 			&inv.Deactivated,
 			&createdAt,
 			&updatedAt,
+			&slug,
+			&ulid,
+			&offerPrice,
 			&inv.CountryId,
 			&inv.Country.Name,
 			&inv.StateId,
@@ -1108,8 +1378,22 @@ func (r *PostgresRepository) SearchInventory(
 		); err != nil {
 			return nil, fmt.Errorf("scan inventory: %w", err)
 		}
+
+		if slug.Valid {
+			inv.Slug = slug.String
+		} else {
+			inv.Slug = ""
+		}
+		if ulid.Valid {
+			inv.Ulid = ulid.String
+		} else {
+			inv.Ulid = ""
+		}
+
+		inv.OfferPrice = offerPrice
 		inv.CreatedAt = timestamppb.New(createdAt)
 		inv.UpdatedAt = timestamppb.New(updatedAt)
+
 		page = append(page, inv)
 		ids = append(ids, inv.Id)
 	}

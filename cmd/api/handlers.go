@@ -16,6 +16,7 @@ import (
 	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/obynonwane/inventory-service/data"
+	"github.com/obynonwane/inventory-service/utility"
 	"github.com/obynonwane/rental-service-proto/inventory"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -208,8 +209,25 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 			}
 		}()
 
+		slug, ulid := utility.GenerateSlug(req.Name)
+		description := utility.TesxtToLower(req.Description)
+
 		// Save product details and images in the database (if applicable)
-		err = i.Models.CreateInventory(tx, dbCtx, req.Name, req.Description, req.UserId, req.CategoryId, req.SubCategoryId, req.CountryId, req.StateId, req.LgaId, urls)
+		err = i.Models.CreateInventory(
+			tx,
+			dbCtx,
+			req.Name,
+			description,
+			req.UserId,
+			req.CategoryId,
+			req.SubCategoryId,
+			req.CountryId,
+			req.StateId,
+			req.LgaId,
+			slug,
+			ulid,
+			req.OfferPrice,
+			urls)
 		if err != nil {
 			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
 			return
@@ -1010,6 +1028,9 @@ func (s *InventoryServer) SearchInventory(
 			UpdatedAt:      di.UpdatedAt,
 			CreatedAtHuman: formatTimestamp(di.CreatedAt),
 			UpdatedAtHuman: formatTimestamp(di.UpdatedAt),
+			Slug:           di.Slug,
+			Ulid:           di.Ulid,
+			OfferPrice:     di.OfferPrice,
 			CountryId:      di.CountryId,
 			Country:        &inventory.Country{Id: di.CountryId, Name: di.Country.Name},
 			StateId:        di.StateId,

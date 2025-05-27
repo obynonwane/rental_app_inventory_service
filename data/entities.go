@@ -41,21 +41,25 @@ type Subcategory struct {
 }
 
 type Inventory struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	Description   string           `json:"description"`
-	UserId        string           `json:"user_id"`
-	CategoryId    string           `json:"category_id"`
-	SubcategoryId string           `json:"subcategory_id"`
-	Promoted      bool             `json:"promoted"`
-	Deactivated   bool             `json:"deactivated"`
-	CreatedAt     time.Time        `json:"created_at"`
-	UpdatedAt     time.Time        `json:"updated_at"`
-	CountryId     string           `json:"country_id"`
-	StateId       string           `json:"state_id"`
-	LgaId         string           `json:"lga_id"`
-	Images        []InventoryImage `json:"images"` // One-to-many relationship
-	User          User             `json:"user"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	UserId        string    `json:"user_id"`
+	CategoryId    string    `json:"category_id"`
+	SubcategoryId string    `json:"subcategory_id"`
+	Promoted      bool      `json:"promoted"`
+	Deactivated   bool      `json:"deactivated"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	CountryId     string    `json:"country_id"`
+	StateId       string    `json:"state_id"`
+	LgaId         string    `json:"lga_id"`
+	Slug          string    `json:"slug"`
+	Ulid          string    `json:"ulid"`
+	OfferPrice    float64   `json:"offer_price"`
+
+	Images []InventoryImage `json:"images"` // One-to-many relationship
+	User   User             `json:"user"`
 }
 
 type InventoryImage struct {

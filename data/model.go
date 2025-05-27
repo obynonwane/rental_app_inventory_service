@@ -343,6 +343,92 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*
 	return &inventory, nil
 }
 
+func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ulid, inventory_id string) (*Inventory, error) {
+	var (
+		query string
+		args  []interface{}
+	)
+
+	// Build query based on provided inputs
+	switch {
+	case inventory_id != "" && slug_ulid != "":
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		         FROM inventories 
+		         WHERE id = $1 OR ulid = $2`
+		args = append(args, inventory_id, slug_ulid)
+
+	case inventory_id != "":
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		         FROM inventories 
+		         WHERE id = $1`
+		args = append(args, inventory_id)
+
+	case slug_ulid != "":
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at 
+		         FROM inventories 
+		         WHERE ulid = $1`
+		args = append(args, slug_ulid)
+
+	default:
+		return nil, fmt.Errorf("either inventory_id or slug_ulid must be provided")
+	}
+
+	var inventory Inventory
+	row := u.Conn.QueryRowContext(ctx, query, args...)
+
+	err := row.Scan(
+		&inventory.ID,
+		&inventory.Name,
+		&inventory.Description,
+		&inventory.UserId,
+		&inventory.CategoryId,
+		&inventory.SubcategoryId,
+		&inventory.Promoted,
+		&inventory.Deactivated,
+		&inventory.UpdatedAt,
+		&inventory.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no inventory found")
+		}
+		return nil, fmt.Errorf("error retrieving inventory: %w", err)
+	}
+
+	// Fetch images for the single inventory
+	imgSQL := `
+		SELECT id, live_url, local_url, inventory_id, created_at, updated_at
+		FROM inventory_images
+		WHERE inventory_id = ANY($1)
+	`
+
+	imgRows, err := u.Conn.QueryContext(ctx, imgSQL, pq.Array([]string{inventory.ID}))
+	if err != nil {
+		return nil, fmt.Errorf("select images: %w", err)
+	}
+	defer imgRows.Close()
+
+	var images []InventoryImage
+	for imgRows.Next() {
+		img := &InventoryImage{}
+		var createdAt, updatedAt time.Time
+		if err := imgRows.Scan(
+			&img.ID, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
+			&createdAt, &updatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan image: %w", err)
+		}
+
+		images = append(images, *img)
+	}
+
+	inventory.Images = images
+
+
+	return &inventory, nil
+}
+
 func (u *PostgresRepository) CreateInventoryRating(
 	ctx context.Context,
 	inventoryId string,

@@ -8,7 +8,8 @@ import (
 type Repository interface {
 	BeginTransaction(ctx context.Context) (*sql.Tx, error)
 	GetAll(ctx context.Context) ([]*User, error)
-	GetInventoryByID(ctx context.Context, id string) (*Inventory, error)
+	GetInventoryByID(ctx context.Context, inventory_id string) (*Inventory, error)
+	GetInventoryByIDOrSlug(ctx context.Context, slug_ulid, inventory_id string) (*Inventory, error)
 	GetAllCategory(ctx context.Context) ([]*Category, error)
 	GetAllSubCategory(ctx context.Context) ([]*Subcategory, error)
 	GetcategoryByID(ctx context.Context, id string) (*Category, error)

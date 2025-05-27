@@ -15,6 +15,7 @@ import (
 
 	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
+
 	"github.com/obynonwane/inventory-service/data"
 	"github.com/obynonwane/inventory-service/utility"
 	"github.com/obynonwane/rental-service-proto/inventory"
@@ -633,7 +634,7 @@ func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatin
 	}
 }
 
-func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.ResourceId) (*inventory.InventoryResponseDetail, error) {
+func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.SingleInventoryRequestDetail) (*inventory.InventoryResponseDetail, error) {
 
 	// 1. channel to hold inventory & error channel
 	inventoryExistCh := make(chan *data.Inventory, 1)
@@ -646,7 +647,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.R
 	// 3. go routine to retrieve inventory whose id is supplied
 	go func() {
 
-		inv, err := i.Models.GetInventoryByID(timeoutCtx, req.Id)
+		inv, err := i.Models.GetInventoryByIDOrSlug(timeoutCtx, req.SlugUlid, req.InventoryId)
 
 		if err != nil {
 			errInventoryExistCh <- err
@@ -677,6 +678,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.R
 				CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
 			},
+
 			User: &inventory.User{
 				Id:             user.ID,
 				FirstName:      user.FirstName,
@@ -687,6 +689,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.R
 				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
 			},
+			Images: mapToProtoImages(data.Images),
 		}, nil
 
 	case err := <-errInventoryExistCh:
@@ -698,6 +701,21 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.R
 		return nil, fmt.Errorf("request timed out while fetching user who is been rated")
 	}
 
+}
+
+func mapToProtoImages(images []data.InventoryImage) []*inventory.InventoryImage {
+	var protoImages []*inventory.InventoryImage
+	for _, img := range images {
+		protoImages = append(protoImages, &inventory.InventoryImage{
+			Id:          img.ID,
+			LiveUrl:     img.LiveUrl,
+			LocalUrl:    img.LocalUrl,
+			InventoryId: img.InventoryId,
+			CreatedAt:   timestamppb.New(img.CreatedAt),
+			UpdatedAt:   timestamppb.New(img.UpdatedAt),
+		})
+	}
+	return protoImages
 }
 
 func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.GetResourceWithIDAndPagination) (*inventory.UserRatingsResponse, error) {

@@ -275,6 +275,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 				Name:           category.Name,
 				Description:    category.Description,
 				IconClass:      category.IconClass,
+				CategorySlug:   category.CategorySlug,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
 			}
@@ -326,13 +327,14 @@ func (i *InventoryServer) GetSubCategories(ctx context.Context, req *inventory.E
 		for _, subCategory := range subCategories {
 
 			singleSubCategory := &inventory.SubCategoryResponse{
-				Id:             subCategory.ID,
-				Name:           subCategory.Name,
-				CategoryId:     subCategory.CategoryId,
-				Description:    subCategory.Description,
-				IconClass:      subCategory.IconClass,
-				CreatedAtHuman: formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
-				UpdatedAtHuman: formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
+				Id:              subCategory.ID,
+				Name:            subCategory.Name,
+				CategoryId:      subCategory.CategoryId,
+				Description:     subCategory.Description,
+				IconClass:       subCategory.IconClass,
+				SubcategorySlug: subCategory.SubCategorySlug,
+				CreatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
+				UpdatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
 			}
 
 			allSubCategories = append(allSubCategories, singleSubCategory)

@@ -425,7 +425,6 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	inventory.Images = images
 
-
 	return &inventory, nil
 }
 
@@ -860,12 +859,15 @@ type SearchPayload struct {
 	Offset        string `json:"offet"`
 	CategoryID    string `json:"category_id"`
 	SubcategoryID string `json:"subcategory_id"`
+	Ulid          string `json:"ulid"`
 }
 
 func (r *PostgresRepository) SearchInventory(
 	ctx context.Context,
 	p *SearchPayload,
 ) (*InventoryCollection, error) {
+
+	log.Println(p, "the payload")
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
@@ -925,6 +927,13 @@ func (r *PostgresRepository) SearchInventory(
 		args = append(args, p.SubcategoryID)
 		argIdx++
 	}
+	if p.Ulid != "" {
+		conditions = append(conditions, fmt.Sprintf("l.ulid = $%d", argIdx))
+		args = append(args, p.Ulid)
+		argIdx++
+	}
+
+	log.Println(p.Ulid, "ThE ULID")
 
 	whereClause := ""
 	if len(conditions) > 0 {

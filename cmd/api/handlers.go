@@ -1018,6 +1018,7 @@ func (s *InventoryServer) SearchInventory(
 		Offset:        req.Offset,
 		CategoryID:    req.CategoryId,
 		SubcategoryID: req.SubcategoryId,
+		Ulid:          req.Ulid,
 	}
 
 	// 3) Call your repo

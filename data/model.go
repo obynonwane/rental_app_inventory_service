@@ -112,7 +112,6 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 
 	}
 
-	log.Printf("CATEGORY: %+v\n", categories)
 	return categories, nil
 
 }

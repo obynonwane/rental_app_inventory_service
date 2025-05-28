@@ -102,7 +102,12 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		category, catErr := i.Models.GetcategoryByID(ctx, req.CategoryId)
+
+		param := &data.GetCategoryByIDPayload{
+			CategoryID: req.CategoryId,
+		}
+
+		category, catErr := i.Models.GetCategoryByID(ctx, param)
 		catErrCh <- catErr     // Write the error or nil
 		categoryCh <- category // Write the subcategory or nil
 	}()
@@ -500,7 +505,7 @@ func (i *InventoryServer) GetCategorySubcategories(ctx context.Context, req *inv
 
 }
 
-func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.ResourceId) (*inventory.CategoryResponse, error) {
+func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.GetCategoryByIDPayload) (*inventory.CategoryResponse, error) {
 
 	// intantiate response and error channels
 	categoryChannel := make(chan *data.Category)
@@ -510,9 +515,14 @@ func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.Resour
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	param := &data.GetCategoryByIDPayload{
+		CategoryID:   req.CategoryId,
+		CategorySlug: req.CategorySlug,
+	}
+
 	// start go routin for asynchronous execution
 	go func() {
-		data, err := i.Models.GetcategoryByID(ctx, req.Id)
+		data, err := i.Models.GetCategoryByID(ctx, param)
 		if err != nil {
 			erroChannel <- err
 			return

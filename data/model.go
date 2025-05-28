@@ -189,15 +189,68 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 	return subCategories, nil
 }
 
-func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
+// func (u *PostgresRepository) GetcategoryByID(ctx context.Context, p *GetCategoryByIDPayload) (*Category, error) {
 
-	// query to select
-	query := `SELECT id, name, description, icon_class, category_slug, updated_at, created_at FROM categories WHERE id = $1`
+// 	// query to select
+// 	query := `SELECT id, name, description, icon_class, category_slug, updated_at, created_at FROM categories WHERE id = $1`
 
-	row := u.Conn.QueryRowContext(ctx, query, id)
+// 	row := u.Conn.QueryRowContext(ctx, query, p.CategoryID)
+
+// 	var category Category
+
+// 	err := row.Scan(
+// 		&category.ID,
+// 		&category.Name,
+// 		&category.Description,
+// 		&category.IconClass,
+// 		&category.CategorySlug,
+// 		&category.UpdatedAt,
+// 		&category.CreatedAt,
+// 	)
+
+// 	if err != nil {
+// 		if errors.Is(err, sql.ErrNoRows) {
+// 			// Handle case where no category is found for the given ID
+// 			return nil, fmt.Errorf("no category found with ID %s", id)
+// 		}
+// 		// Handle other possible errors
+// 		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
+// 	}
+
+// 	return &category, nil
+// }
+
+func (u *PostgresRepository) GetCategoryByID(ctx context.Context, p *GetCategoryByIDPayload) (*Category, error) {
+
+	var (
+		query  string
+		args   []interface{}
+		filter []string
+	)
+
+	if p.CategoryID != "" {
+		args = append(args, p.CategoryID)
+		filter = append(filter, fmt.Sprintf("id = $%d", len(args)))
+	}
+	if p.CategorySlug != "" {
+		args = append(args, p.CategorySlug)
+		filter = append(filter, fmt.Sprintf("category_slug = $%d", len(args)))
+	}
+
+	if len(filter) == 0 {
+		return nil, fmt.Errorf("no identifier provided to search category")
+	}
+
+	query = fmt.Sprintf(`
+		SELECT id, name, description, icon_class, category_slug, updated_at, created_at
+		FROM categories
+		WHERE %s
+		LIMIT 1`, strings.Join(filter, " AND "),
+	)
+
+	row := u.Conn.QueryRowContext(ctx, query, args...)
 
 	var category Category
-
 	err := row.Scan(
 		&category.ID,
 		&category.Name,
@@ -210,15 +263,14 @@ func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*C
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// Handle case where no category is found for the given ID
-			return nil, fmt.Errorf("no category found with ID %s", id)
+			return nil, fmt.Errorf("no category found with the provided identifier(s)")
 		}
-		// Handle other possible errors
-		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
+		return nil, fmt.Errorf("error retrieving category: %w", err)
 	}
 
 	return &category, nil
 }
+
 func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error) {
 
 	// query to select
@@ -962,6 +1014,11 @@ type SearchPayload struct {
 	LgaSlug         string `json:"lga_slug"`
 	CategorySlug    string `json:"category_slug"`
 	SubcategorySlug string `json:"subcategory_slug"`
+}
+
+type GetCategoryByIDPayload struct {
+	CategoryID   string `json:"category_id"`
+	CategorySlug string `json:"category_slug"`
 }
 
 func (r *PostgresRepository) SearchInventory(

@@ -60,6 +60,12 @@ type Inventory struct {
 	Ulid          string    `json:"ulid"`
 	OfferPrice    float64   `json:"offer_price"`
 
+	StateSlug       string `json:"state_slug"`
+	CountrySlug     string `json:"country_slug"`
+	LgaSlug         string `json:"lga_slug"`
+	CategorySlug    string `json:"category_slug"`
+	SubcategorySlug string `json:"subcategory_slug"`
+
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user"`
 }
@@ -116,4 +122,30 @@ type UserRatingReply struct {
 	Comment       string    `json:"comment"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	CreatedAt     time.Time `json:"created_at"`
+}
+
+type Country struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Code      string    `json:"code"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type State struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	StateSlug string    `json:"state_slug"`
+	CountryID string    `json:"country_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Lga struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	LgaSlug   string    `json:"lga_slug"`
+	StateID   string    `json:"state_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
 }

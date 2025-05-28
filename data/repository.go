@@ -9,13 +9,16 @@ type Repository interface {
 	BeginTransaction(ctx context.Context) (*sql.Tx, error)
 	GetAll(ctx context.Context) ([]*User, error)
 	GetInventoryByID(ctx context.Context, inventory_id string) (*Inventory, error)
+	GetCountryByID(ctx context.Context, country_id string) (*Country, error)
+	GetStateByID(ctx context.Context, state_id string) (*State, error)
+	GetLgaByID(ctx context.Context, lga_id string) (*Lga, error)
 	GetInventoryByIDOrSlug(ctx context.Context, slug_ulid, inventory_id string) (*Inventory, error)
 	GetAllCategory(ctx context.Context) ([]*Category, error)
 	GetAllSubCategory(ctx context.Context) ([]*Subcategory, error)
 	GetcategoryByID(ctx context.Context, id string) (*Category, error)
 	GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error)
 	GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error)
-	CreateInventory(tx *sql.Tx, ctx context.Context, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId, slug, ulid string, offerPrice float64, urls []string) error
+	CreateInventory(tx *sql.Tx, ctx context.Context, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId, slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subCategorySlug string, offerPrice float64, urls []string) error
 	CreateInventoryRating(ctx context.Context, inventoryId string, raterId string, userId string, comment string, rating int32) (*InventoryRating, error)
 	CreateUserRating(ctx context.Context, userId string, rating int32, comment string, raterId string) (*UserRating, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)

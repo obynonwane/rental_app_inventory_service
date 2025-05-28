@@ -191,10 +191,8 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 
 func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*Category, error) {
 
-	start := time.Now()
-
 	// query to select
-	query := `SELECT id, name, description, icon_class, updated_at, created_at FROM categories WHERE id = $1`
+	query := `SELECT id, name, description, icon_class, category_slug, updated_at, created_at FROM categories WHERE id = $1`
 
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
@@ -205,6 +203,7 @@ func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*C
 		&category.Name,
 		&category.Description,
 		&category.IconClass,
+		&category.CategorySlug,
 		&category.UpdatedAt,
 		&category.CreatedAt,
 	)
@@ -218,15 +217,12 @@ func (u *PostgresRepository) GetcategoryByID(ctx context.Context, id string) (*C
 		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
 	}
 
-	log.Printf("GetcategoryByID took %s", time.Since(start))
-
 	return &category, nil
 }
 func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error) {
-	start := time.Now()
-	log.Println("Inside Get subcategory Query")
+
 	// query to select
-	query := `SELECT id, category_id, name, description, icon_class, updated_at, created_at FROM subcategories WHERE id = $1`
+	query := `SELECT id, category_id, name, description, icon_class, subcategory_slug, updated_at, created_at FROM subcategories WHERE id = $1`
 
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
@@ -238,6 +234,7 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 		&subCategory.Name,
 		&subCategory.Description,
 		&subCategory.IconClass,
+		&subCategory.SubCategorySlug,
 		&subCategory.UpdatedAt,
 		&subCategory.CreatedAt,
 	)
@@ -251,7 +248,6 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 		return nil, fmt.Errorf("error retrieving subcategory by ID: %w", err)
 	}
 
-	log.Printf("SubGetcategoryByID took %s", time.Since(start))
 	return &subCategory, nil
 }
 
@@ -266,20 +262,37 @@ func (u *PostgresRepository) CreateInventory(
 	countryId,
 	stateId,
 	lgaId,
-	slug, ulid string,
+	slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subcategorySlug string,
 	offerPrice float64,
 	urls []string) error {
 
 	log.Println(slug, "slug")
 	log.Println(ulid, "ulid")
 	log.Println(offerPrice, "offerprice")
+	log.Println(stateSlug, "stateSlug")
+	log.Println(countrySlug, "countrySlug")
+	log.Println(lgaSlug, "lgaSlug")
+	log.Println(categorySlug, "categorySlug")
+	log.Println(subcategorySlug, "subcategorySlug")
 
-	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, updated_at, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, NOW(), NOW()) 
-			RETURNING id, name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, updated_at, created_at`
+	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, lga_slug, country_slug, category_slug, subcategory_slug, updated_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW()) 
+			RETURNING id, name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, lga_slug, country_slug, category_slug, subcategory_slug, updated_at, created_at`
 
 	var inventory Inventory
-	err := tx.QueryRowContext(ctx, query, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId, slug, ulid, offerPrice).Scan(
+	err := tx.QueryRowContext(ctx,
+		query,
+		name,
+		description,
+		userId,
+		categoryId,
+		subcategoryId,
+		countryId,
+		stateId,
+		lgaId,
+		slug,
+		ulid,
+		offerPrice, stateSlug, lgaSlug, countrySlug, categorySlug, subcategorySlug).Scan(
 		&inventory.ID,
 		&inventory.Name,
 		&inventory.Description,
@@ -292,6 +305,11 @@ func (u *PostgresRepository) CreateInventory(
 		&inventory.Slug,
 		&inventory.Ulid,
 		&inventory.OfferPrice,
+		&inventory.StateSlug,
+		&inventory.LgaSlug,
+		&inventory.CountrySlug,
+		&inventory.CategorySlug,
+		&inventory.SubcategorySlug,
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,
 	)
@@ -341,6 +359,83 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*
 	}
 
 	return &inventory, nil
+}
+
+func (u *PostgresRepository) GetCountryByID(ctx context.Context, id string) (*Country, error) {
+
+	query := `SELECT id, name, code, updated_at, created_at FROM countries WHERE id = $1`
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var country Country
+
+	err := row.Scan(
+		&country.ID,
+		&country.Name,
+		&country.Code,
+		&country.UpdatedAt, // Ensure the order matches the query
+		&country.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no country found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving country by ID: %w", err)
+	}
+
+	return &country, nil
+}
+
+func (u *PostgresRepository) GetStateByID(ctx context.Context, id string) (*State, error) {
+
+	query := `SELECT id, name, state_slug, country_id, updated_at, created_at FROM states WHERE id = $1`
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var state State
+
+	err := row.Scan(
+		&state.ID,
+		&state.Name,
+		&state.StateSlug,
+		&state.CountryID,
+		&state.UpdatedAt, // Ensure the order matches the query
+		&state.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no state found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving state by ID: %w", err)
+	}
+
+	return &state, nil
+}
+
+func (u *PostgresRepository) GetLgaByID(ctx context.Context, id string) (*Lga, error) {
+
+	query := `SELECT id, name, lga_slug, state_id, updated_at, created_at FROM lgas WHERE id = $1`
+	row := u.Conn.QueryRowContext(ctx, query, id)
+
+	var lga Lga
+
+	err := row.Scan(
+		&lga.ID,
+		&lga.Name,
+		&lga.LgaSlug,
+		&lga.StateID,
+		&lga.UpdatedAt, // Ensure the order matches the query
+		&lga.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no lga found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving lga by ID: %w", err)
+	}
+
+	return &lga, nil
 }
 
 func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ulid, inventory_id string) (*Inventory, error) {
@@ -861,6 +956,12 @@ type SearchPayload struct {
 	CategoryID    string `json:"category_id"`
 	SubcategoryID string `json:"subcategory_id"`
 	Ulid          string `json:"ulid"`
+
+	StateSlug       string `json:"state_slug"`
+	CountrySlug     string `json:"country_slug"`
+	LgaSlug         string `json:"lga_slug"`
+	CategorySlug    string `json:"category_slug"`
+	SubcategorySlug string `json:"subcategory_slug"`
 }
 
 func (r *PostgresRepository) SearchInventory(
@@ -872,6 +973,7 @@ func (r *PostgresRepository) SearchInventory(
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
+	log.Println(p, "The param")
 	// Parse limit & offset
 	limit := 20
 	offset := 0
@@ -933,8 +1035,31 @@ func (r *PostgresRepository) SearchInventory(
 		args = append(args, p.Ulid)
 		argIdx++
 	}
-
-	log.Println(p.Ulid, "ThE ULID")
+	if p.StateSlug != "" {
+		conditions = append(conditions, fmt.Sprintf("l.state_slug = $%d", argIdx))
+		args = append(args, p.StateSlug)
+		argIdx++
+	}
+	if p.CountrySlug != "" {
+		conditions = append(conditions, fmt.Sprintf("l.country_slug = $%d", argIdx))
+		args = append(args, p.CountrySlug)
+		argIdx++
+	}
+	if p.LgaSlug != "" {
+		conditions = append(conditions, fmt.Sprintf("l.lga_slug = $%d", argIdx))
+		args = append(args, p.LgaSlug)
+		argIdx++
+	}
+	if p.CategorySlug != "" {
+		conditions = append(conditions, fmt.Sprintf("l.category_slug = $%d", argIdx))
+		args = append(args, p.CategorySlug)
+		argIdx++
+	}
+	if p.SubcategorySlug != "" {
+		conditions = append(conditions, fmt.Sprintf("l.subcategory_slug = $%d", argIdx))
+		args = append(args, p.SubcategorySlug)
+		argIdx++
+	}
 
 	whereClause := ""
 	if len(conditions) > 0 {
@@ -964,6 +1089,11 @@ func (r *PostgresRepository) SearchInventory(
 			l.slug,
 			l.ulid,
 			l.offer_price,
+			l.state_slug,
+			l.country_slug,
+			l.lga_slug,
+			l.category_slug,
+			l.subcategory_slug,
 			l.country_id,
 			co.name AS country_name,
 			l.state_id,
@@ -1013,6 +1143,11 @@ func (r *PostgresRepository) SearchInventory(
 			slug                 sql.NullString
 			ulid                 sql.NullString
 			offerPrice           float64
+			stateSlug            sql.NullString
+			lgaSlug              sql.NullString
+			countrySlug          sql.NullString
+			categorySlug         sql.NullString
+			subcategorySlug      sql.NullString
 		)
 
 		if err := rows.Scan(
@@ -1029,6 +1164,11 @@ func (r *PostgresRepository) SearchInventory(
 			&slug,
 			&ulid,
 			&offerPrice,
+			&stateSlug,
+			&countrySlug,
+			&lgaSlug,
+			&categorySlug,
+			&subcategorySlug,
 			&inv.CountryId,
 			&inv.Country.Name,
 			&inv.StateId,
@@ -1053,6 +1193,35 @@ func (r *PostgresRepository) SearchInventory(
 			inv.Ulid = ulid.String
 		} else {
 			inv.Ulid = ""
+		}
+
+		if stateSlug.Valid {
+			inv.StateSlug = stateSlug.String
+		} else {
+			inv.StateSlug = ""
+		}
+
+		if lgaSlug.Valid {
+			inv.LgaSlug = lgaSlug.String
+		} else {
+			inv.LgaSlug = ""
+		}
+
+		if countrySlug.Valid {
+			inv.CountrySlug = countrySlug.String
+		} else {
+			inv.CountrySlug = ""
+		}
+		if categorySlug.Valid {
+			inv.CategorySlug = categorySlug.String
+		} else {
+			inv.CategorySlug = ""
+		}
+
+		if subcategorySlug.Valid {
+			inv.SubcategorySlug = subcategorySlug.String
+		} else {
+			inv.SubcategorySlug = ""
 		}
 
 		inv.OfferPrice = offerPrice

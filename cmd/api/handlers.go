@@ -82,16 +82,29 @@ func (app *Config) GetUsers(w http.ResponseWriter, r *http.Request) {
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
 
 	var wg sync.WaitGroup
-	catErrCh := make(chan error, 1)             // Buffered to avoid blocking
+
+	catErrCh := make(chan error, 1)            // Buffered to avoid blocking
+	categoryCh := make(chan *data.Category, 1) // Buffered to avoid blocking
+
 	subCatErrCh := make(chan error, 1)          // Buffered to avoid blocking
 	subCatCh := make(chan *data.Subcategory, 1) // Buffered to avoid blocking
+
+	stateErrCh := make(chan error, 1)    // Buffered to avoid blocking
+	stateCh := make(chan *data.State, 1) // Buffered to avoid blocking
+
+	countryErrCh := make(chan error, 1)      // Buffered to avoid blocking
+	countryCh := make(chan *data.Country, 1) // Buffered to avoid blocking
+
+	lgaErrCh := make(chan error, 1)  // Buffered to avoid blocking
+	lgaCh := make(chan *data.Lga, 1) // Buffered to avoid blocking
 
 	// Validate category
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, catErr := i.Models.GetcategoryByID(ctx, req.CategoryId)
-		catErrCh <- catErr // Write the error or nil
+		category, catErr := i.Models.GetcategoryByID(ctx, req.CategoryId)
+		catErrCh <- catErr     // Write the error or nil
+		categoryCh <- category // Write the subcategory or nil
 	}()
 
 	// Validate subcategory
@@ -103,13 +116,46 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		subCatCh <- subcategory  // Write the subcategory or nil
 	}()
 
+	// Validate state
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		state, stateErr := i.Models.GetStateByID(ctx, req.StateId)
+		stateErrCh <- stateErr // Write the error or nil
+		stateCh <- state       // Write the state or nil
+	}()
+
+	// Validate country
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		country, countryErr := i.Models.GetCountryByID(ctx, req.CountryId)
+		countryErrCh <- countryErr // Write the error or nil
+		countryCh <- country       // Write the country or nil
+	}()
+
+	// Validate Lga
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		lga, lgaErr := i.Models.GetLgaByID(ctx, req.LgaId)
+		lgaErrCh <- lgaErr // Write the error or nil
+		lgaCh <- lga       // Write the country or nil
+	}()
+
 	// Wait for both goroutines to finish
 	wg.Wait()
 
 	// Close channels after all goroutines finish writing
 	close(catErrCh)
 	close(subCatErrCh)
+	close(stateErrCh)
+	close(countryErrCh)
+	close(lgaErrCh)
 	close(subCatCh)
+	close(stateCh)
+	close(countryCh)
+	close(lgaCh)
 
 	// Read category validation error
 	catErr := <-catErrCh
@@ -123,6 +169,26 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		return nil, fmt.Errorf("error validating subcategory: %v", subCatErr)
 	}
 
+	// Read state validation error
+	stateErr := <-stateErrCh
+	if stateErr != nil {
+		return nil, fmt.Errorf("error validating state: %v", stateErr)
+	}
+
+	// Read country validation error
+	countryErr := <-countryErrCh
+	if countryErr != nil {
+		return nil, fmt.Errorf("error validating country: %v", stateErr)
+	}
+
+	// Read lga validation error
+	lgaErr := <-lgaErrCh
+	if lgaErr != nil {
+		return nil, fmt.Errorf("error validating lga: %v", lgaErr)
+	}
+
+	category := <-categoryCh
+	country := <-countryCh
 	// Read and validate subcategory
 	subcategory := <-subCatCh
 	if subcategory == nil {
@@ -131,6 +197,24 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 
 	if subcategory.CategoryId != req.CategoryId {
 		return nil, fmt.Errorf("subcategory does not belong to category")
+	}
+
+	// Read and validate state & country
+	state := <-stateCh
+	if state == nil {
+		return nil, fmt.Errorf("state not found")
+	}
+	if state.CountryID != req.CountryId {
+		return nil, fmt.Errorf("state does not belong to country")
+	}
+
+	// Read and validate state & lga
+	lga := <-lgaCh
+	if lga == nil {
+		return nil, fmt.Errorf("lga not found")
+	}
+	if lga.StateID != req.StateId {
+		return nil, fmt.Errorf("lga does not belong to state")
 	}
 
 	// Increase the timeout duration for Cloudinary initialization and image uploads
@@ -227,6 +311,11 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 			req.LgaId,
 			slug,
 			ulid,
+			state.StateSlug,
+			country.Code,
+			lga.LgaSlug,
+			category.CategorySlug,
+			subcategory.SubCategorySlug,
 			req.OfferPrice,
 			urls)
 		if err != nil {
@@ -1011,15 +1100,20 @@ func (s *InventoryServer) SearchInventory(
 
 	// 2) Build your data.SearchPayload (Limit/Offset as strings)
 	param := &data.SearchPayload{
-		CountryID:     req.CountryId,
-		StateID:       req.StateId,
-		LgaID:         req.LgaId,
-		Text:          req.Text,
-		Limit:         req.Limit,
-		Offset:        req.Offset,
-		CategoryID:    req.CategoryId,
-		SubcategoryID: req.SubcategoryId,
-		Ulid:          req.Ulid,
+		CountryID:       req.CountryId,
+		StateID:         req.StateId,
+		LgaID:           req.LgaId,
+		Text:            req.Text,
+		Limit:           req.Limit,
+		Offset:          req.Offset,
+		CategoryID:      req.CategoryId,
+		SubcategoryID:   req.SubcategoryId,
+		Ulid:            req.Ulid,
+		StateSlug:       req.StateSlug,
+		CountrySlug:     req.CountrySlug,
+		LgaSlug:         req.LgaSlug,
+		CategorySlug:    req.CategorySlug,
+		SubcategorySlug: req.SubcategorySlug,
 	}
 
 	// 3) Call your repo
@@ -1061,6 +1155,12 @@ func (s *InventoryServer) SearchInventory(
 			Lga:            &inventory.LGA{Id: di.LgaId, Name: di.Lga.Name, StateId: di.Lga.StateId},
 			Images:         make([]*inventory.InventoryImage, len(di.Images)),
 			User:           &inventory.User{Id: di.User.Id, FirstName: di.User.FirstName, Email: di.User.Email, LastName: di.User.LastName, Phone: di.User.Phone},
+
+			StateSlug:       di.StateSlug,
+			CountrySlug:     di.CountrySlug,
+			LgaSlug:         di.LgaSlug,
+			CategorySlug:    di.CategorySlug,
+			SubcategorySlug: di.SubcategorySlug,
 		}
 		// map images
 		for i, img := range di.Images {

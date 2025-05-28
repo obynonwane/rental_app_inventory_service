@@ -538,6 +538,7 @@ func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.GetCat
 			Name:           category.Name,
 			Description:    category.Description,
 			IconClass:      category.IconClass,
+			CategorySlug:   category.CategorySlug,
 			CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
 			UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
 			StatusCode:     http.StatusOK,

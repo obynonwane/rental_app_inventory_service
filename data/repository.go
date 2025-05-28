@@ -15,7 +15,7 @@ type Repository interface {
 	GetInventoryByIDOrSlug(ctx context.Context, slug_ulid, inventory_id string) (*Inventory, error)
 	GetAllCategory(ctx context.Context) ([]*Category, error)
 	GetAllSubCategory(ctx context.Context) ([]*Subcategory, error)
-	GetcategoryByID(ctx context.Context, id string) (*Category, error)
+	GetCategoryByID(ctx context.Context, p *GetCategoryByIDPayload) (*Category, error)
 	GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error)
 	GetSubcategoryByID(ctx context.Context, id string) (*Subcategory, error)
 	CreateInventory(tx *sql.Tx, ctx context.Context, name, description, userId, categoryId, subcategoryId, countryId, stateId, lgaId, slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subCategorySlug string, offerPrice float64, urls []string) error

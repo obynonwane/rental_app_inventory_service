@@ -362,8 +362,25 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 		// declare a map of type inventory category response of model type mismatch with the proto message type
 		var allCategories []*inventory.CategoryResponse
 
-		// loop and push response to above array
+		// loop and push response to above allCategories slice
 		for _, category := range categories {
+
+			// declare slice of subcategory
+			var subcategories []*inventory.SubCategoryResponse
+
+			// loop through the subcategory as return
+			for _, sub := range category.Subcategories {
+
+				// append subcategory to subcategories slice
+				subcategories = append(subcategories, &inventory.SubCategoryResponse{
+					Id:              sub.ID,
+					Name:            sub.Name,
+					Description:     sub.Description,
+					SubcategorySlug: sub.SubCategorySlug,
+					CreatedAtHuman:  formatTimestamp(timestamppb.New(sub.CreatedAt)),
+					UpdatedAtHuman:  formatTimestamp(timestamppb.New(sub.UpdatedAt)),
+				})
+			}
 
 			singleCategory := &inventory.CategoryResponse{
 				Id:             category.ID,
@@ -373,6 +390,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 				CategorySlug:   category.CategorySlug,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
+				Subcategories:  subcategories,
 			}
 
 			allCategories = append(allCategories, singleCategory)

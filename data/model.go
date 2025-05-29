@@ -79,42 +79,88 @@ func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
 }
 
 func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, error) {
-	// make the query script
-	query := `SELECT id, name, description, icon_class, category_slug, updated_at, created_at FROM categories`
+	query := `
+		SELECT
+			c.id, c.name, c.description, c.icon_class, c.category_slug, c.created_at, c.updated_at,
+			s.id, s.name, s.description, s.icon_class, s.subcategory_slug, s.created_at, s.updated_at, s.category_id
+		FROM categories c
+		LEFT JOIN subcategories s ON c.id = s.category_id
+		ORDER BY c.name
+	`
 
 	rows, err := u.Conn.QueryContext(ctx, query)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var categories []*Category
+	categoryMap := make(map[string]*Category)
 
 	for rows.Next() {
-		var category Category
+		var (
+			cat                        Category
+			sub                        Subcategory
+			subID, subName             sql.NullString
+			subDesc, subIcon, subSlug  sql.NullString
+			subCreatedAt, subUpdatedAt sql.NullTime
+			subCatID                   sql.NullString
+		)
+
 		err := rows.Scan(
-			&category.ID,
-			&category.Name,
-			&category.Description,
-			&category.IconClass,
-			&category.CategorySlug,
-			&category.UpdatedAt,
-			&category.CreatedAt,
+			&cat.ID,
+			&cat.Name,
+			&cat.Description,
+			&cat.IconClass,
+			&cat.CategorySlug,
+			&cat.CreatedAt,
+			&cat.UpdatedAt,
+			&subID,
+			&subName,
+			&subDesc,
+			&subIcon,
+			&subSlug,
+			&subCreatedAt,
+			&subUpdatedAt,
+			&subCatID,
 		)
 
 		if err != nil {
-			log.Println("Error scanning", err)
+			log.Println("Error scanning row:", err)
+			continue
 		}
 
-		categories = append(categories, &category)
+		// Check if the category already exist
+		existing, exists := categoryMap[cat.ID]
+		if !exists {
+			existing = &cat
+			categoryMap[cat.ID] = existing
+		}
 
+		// Append subcategory if it exists
+		if subID.Valid {
+			sub.ID = subID.String
+			sub.Name = subName.String
+			sub.Description = subDesc.String
+			sub.IconClass = subIcon.String
+			sub.SubCategorySlug = subSlug.String
+			sub.CreatedAt = subCreatedAt.Time
+			sub.UpdatedAt = subUpdatedAt.Time
+			sub.CategoryId = subCatID.String
+
+			existing.Subcategories = append(existing.Subcategories, sub)
+		}
+	}
+
+	// Convert map to slice
+	var categories []*Category
+	for _, c := range categoryMap {
+		categories = append(categories, c)
 	}
 
 	return categories, nil
 
 }
+
 func (u *PostgresRepository) GetAllSubCategory(ctx context.Context) ([]*Subcategory, error) {
 	// make the query script
 	query := `SELECT id, category_id, name, description, icon_class, subcategory_slug, updated_at, created_at FROM subcategories`
@@ -188,37 +234,6 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 
 	return subCategories, nil
 }
-
-// func (u *PostgresRepository) GetcategoryByID(ctx context.Context, p *GetCategoryByIDPayload) (*Category, error) {
-
-// 	// query to select
-// 	query := `SELECT id, name, description, icon_class, category_slug, updated_at, created_at FROM categories WHERE id = $1`
-
-// 	row := u.Conn.QueryRowContext(ctx, query, p.CategoryID)
-
-// 	var category Category
-
-// 	err := row.Scan(
-// 		&category.ID,
-// 		&category.Name,
-// 		&category.Description,
-// 		&category.IconClass,
-// 		&category.CategorySlug,
-// 		&category.UpdatedAt,
-// 		&category.CreatedAt,
-// 	)
-
-// 	if err != nil {
-// 		if errors.Is(err, sql.ErrNoRows) {
-// 			// Handle case where no category is found for the given ID
-// 			return nil, fmt.Errorf("no category found with ID %s", id)
-// 		}
-// 		// Handle other possible errors
-// 		return nil, fmt.Errorf("error retrieving category by ID: %w", err)
-// 	}
-
-// 	return &category, nil
-// }
 
 func (u *PostgresRepository) GetCategoryByID(ctx context.Context, p *GetCategoryByIDPayload) (*Category, error) {
 

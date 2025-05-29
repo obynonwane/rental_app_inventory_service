@@ -1072,8 +1072,10 @@ func (r *PostgresRepository) SearchInventory(
 	}
 	if p.Text != "" {
 		conditions = append(conditions, fmt.Sprintf(`
-			to_tsvector('english', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ plainto_tsquery('english', $%d)
-		`, argIdx))
+		(to_tsvector('english', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ websearch_to_tsquery('english', $%d)
+		OR l.name ILIKE '%%' || $%d || '%%'
+		OR l.description ILIKE '%%' || $%d || '%%')
+	`, argIdx, argIdx, argIdx))
 		args = append(args, p.Text)
 		argIdx++
 	}

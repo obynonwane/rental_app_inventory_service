@@ -376,6 +376,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 					Id:              sub.ID,
 					Name:            sub.Name,
 					Description:     sub.Description,
+					IconClass:       sub.IconClass,
 					SubcategorySlug: sub.SubCategorySlug,
 					CreatedAtHuman:  formatTimestamp(timestamppb.New(sub.CreatedAt)),
 					UpdatedAtHuman:  formatTimestamp(timestamppb.New(sub.UpdatedAt)),

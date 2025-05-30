@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -85,7 +86,7 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 			s.id, s.name, s.description, s.icon_class, s.subcategory_slug, s.created_at, s.updated_at, s.category_id
 		FROM categories c
 		LEFT JOIN subcategories s ON c.id = s.category_id
-		ORDER BY c.name
+		ORDER BY c.name ASC, s.name ASC
 	`
 
 	rows, err := u.Conn.QueryContext(ctx, query)
@@ -156,6 +157,11 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 	for _, c := range categoryMap {
 		categories = append(categories, c)
 	}
+
+	// Sort by name (or any other deterministic field)
+	sort.Slice(categories, func(i, j int) bool {
+		return categories[i].Name < categories[j].Name
+	})
 
 	return categories, nil
 

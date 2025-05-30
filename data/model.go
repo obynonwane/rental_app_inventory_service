@@ -200,7 +200,7 @@ func (u *PostgresRepository) GetAllSubCategory(ctx context.Context) ([]*Subcateg
 }
 func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id string) ([]*Subcategory, error) {
 	// make the query script
-	query := `SELECT id, category_id, name, description, icon_class, updated_at, created_at FROM subcategories where category_id = $1`
+	query := `SELECT id, category_id, name, description, icon_class, subcategory_slug, updated_at, created_at FROM subcategories where category_id = $1`
 
 	rows, err := u.Conn.QueryContext(ctx, query, id)
 
@@ -220,6 +220,7 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 			&subCategory.Name,
 			&subCategory.Description,
 			&subCategory.IconClass,
+			&subCategory.SubCategorySlug,
 			&subCategory.UpdatedAt,
 			&subCategory.CreatedAt,
 		)

@@ -497,13 +497,14 @@ func (i *InventoryServer) GetCategorySubcategories(ctx context.Context, req *inv
 		for _, subCategory := range subCategories {
 
 			singleSubCategory := &inventory.SubCategoryResponse{
-				Id:             subCategory.ID,
-				Name:           subCategory.Name,
-				CategoryId:     subCategory.CategoryId,
-				Description:    subCategory.Description,
-				IconClass:      subCategory.IconClass,
-				CreatedAtHuman: formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
-				UpdatedAtHuman: formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
+				Id:              subCategory.ID,
+				Name:            subCategory.Name,
+				CategoryId:      subCategory.CategoryId,
+				Description:     subCategory.Description,
+				IconClass:       subCategory.IconClass,
+				SubcategorySlug: subCategory.SubCategorySlug,
+				CreatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
+				UpdatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
 			}
 
 			allSubCategories = append(allSubCategories, singleSubCategory)

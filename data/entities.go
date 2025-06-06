@@ -66,6 +66,16 @@ type Inventory struct {
 	CategorySlug    string `json:"category_slug"`
 	SubcategorySlug string `json:"subcategory_slug"`
 
+	ProductPurpose  string  `json:"product_purpose"`  // e.g., "sale" or "rental"
+	Quantity        float64 `json:"quantity"`         // default to 1
+	IsAvailable     string  `json:"is_available"`     // e.g., "yes" or "no"
+	RentalDuration  string  `json:"rental_duration"`  // e.g., "hourly", "daily"
+	SecurityDeposit float64 `json:"security_deposit"` // default to 0
+	Tags            string  `json:"tags"`             // comma- or space-separated
+	Metadata        string  `json:"metadata"`         // optional JSON string
+	Negotiable      string  `json:"negotiable"`       // e.g., "yes" or "no"
+	PrimaryImage    string  `json:"primary_image"`
+
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user"`
 }

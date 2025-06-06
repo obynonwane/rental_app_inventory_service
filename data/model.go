@@ -357,20 +357,6 @@ type CreateInventoryParams struct {
 	PrimaryImage    string
 }
 
-// tx *sql.Tx,
-// ctx context.Context,
-// name,
-// description,
-// userId,
-// categoryId,
-// subcategoryId,
-// countryId,
-// stateId,
-// lgaId,
-// slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subcategorySlug string,
-// offerPrice float64,
-// urls []string
-
 func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 
 	log.Printf("%v", req)
@@ -395,6 +381,16 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	subcategorySlug := req.SubcategorySlug
 	urls := req.URLs
 
+	productPurpose := req.ProductPurpose
+	quantity := req.Quantity
+	isAvailable := req.IsAvailable
+	rentalDuration := req.RentalDuration
+	securityDeposit := req.SecurityDeposit
+	tags := req.Tags
+	metadata := req.Metadata
+	negotiable := req.Negotiable
+	primaryImage := req.PrimaryImage
+
 	// log.Println(slug, "slug")
 	// log.Println(ulid, "ulid")
 	// log.Println(offerPrice, "offerprice")
@@ -404,9 +400,67 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	// log.Println(categorySlug, "categorySlug")
 	// log.Println(subcategorySlug, "subcategorySlug")
 
-	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, lga_slug, country_slug, category_slug, subcategory_slug, updated_at, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW()) 
-			RETURNING id, name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, lga_slug, country_slug, category_slug, subcategory_slug, updated_at, created_at`
+	query := `INSERT INTO inventories (
+				name, 
+				description, 
+				user_id, 
+				category_id, 
+				subcategory_id, 
+				country_id, 
+				state_id, 
+				lga_id, 
+				slug, 
+				ulid, 
+				offer_price, 
+				state_slug, 
+				lga_slug, 
+				country_slug, 
+				category_slug, 
+				subcategory_slug, 
+
+				product_purpose,
+				quantity,
+				is_available,
+				rental_duration,
+				security_deposit,
+				tags,
+				metadata,
+				negotiable,
+				primary_image,
+
+				updated_at, 
+				created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW()) 
+			RETURNING 
+				id, 
+				name, 
+				description, 
+				user_id, 
+				category_id, 
+				subcategory_id, 
+				country_id, 
+				state_id, 
+				lga_id, 
+				slug, 
+				ulid, 
+				offer_price, 
+				state_slug, 
+				lga_slug, 
+				country_slug, 
+				category_slug, 
+				subcategory_slug, 
+
+				product_purpose,
+				quantity,
+				is_available,
+				rental_duration,
+				security_deposit,
+				metadata,
+				negotiable,
+				primary_image,
+
+				updated_at, 
+				created_at`
 
 	var inventory Inventory
 	err := tx.QueryRowContext(ctx,
@@ -421,7 +475,22 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		lgaId,
 		slug,
 		ulid,
-		offerPrice, stateSlug, lgaSlug, countrySlug, categorySlug, subcategorySlug).Scan(
+		offerPrice,
+		stateSlug,
+		lgaSlug,
+		countrySlug,
+		categorySlug,
+		subcategorySlug,
+		productPurpose,
+		quantity,
+		isAvailable,
+		rentalDuration,
+		securityDeposit,
+		tags,
+		metadata,
+		negotiable,
+		primaryImage,
+	).Scan(
 		&inventory.ID,
 		&inventory.Name,
 		&inventory.Description,
@@ -439,6 +508,16 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		&inventory.CountrySlug,
 		&inventory.CategorySlug,
 		&inventory.SubcategorySlug,
+
+		&inventory.ProductPurpose,
+		&inventory.Quantity,
+		&inventory.IsAvailable,
+		&inventory.RentalDuration,
+		&inventory.SecurityDeposit,
+		&inventory.Metadata,
+		&inventory.Negotiable,
+		&inventory.PrimaryImage,
+
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,
 	)

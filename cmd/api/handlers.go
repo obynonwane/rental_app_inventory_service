@@ -238,7 +238,10 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 
 	go func() {
 		var urls []string
+		var primageImageURL string
 		var wg sync.WaitGroup
+
+		//======================Upload multiple Image  for inventories to cloudinary =====================================================================
 
 		for _, image := range req.Images {
 			wg.Add(1)
@@ -269,13 +272,51 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 					mu.Lock()
 					urls = append(urls, uploadResult.SecureURL)
 					mu.Unlock()
-
 				default:
 					log.Printf("Unsupported image format: %s", img.ImageType)
 					return
 				}
 			}(image)
 		}
+
+		//======================End Upload multiple Image  for inventories to cloudinary =====================================================================
+
+		//======================Upload Single Image for - Primary Image to cloudinary =====================================================================
+		wg.Add(1)
+		go func(img *inventory.ImageData) {
+			defer wg.Done()
+
+			uploadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // Increased timeout for image upload
+			defer cancel()
+
+			// Validate MIME type and map to Cloudinary's expected format
+			switch img.ImageType {
+			case "image/jpeg", "image/png", "image/gif": // Supported types
+				// Generate unique filename (without extension)
+				uniqueFilename := i.App.generateUniqueFilename()
+
+				// Upload directly from byte stream to Cloudinary
+				uploadResult, err := cld.Upload.Upload(uploadCtx, bytes.NewReader(img.ImageData), uploader.UploadParams{
+					Folder:   "rentalsolution/inventories",
+					PublicID: uniqueFilename, // Pass filename without extension
+				})
+				if err != nil {
+					log.Printf("Error uploading to Cloudinary: %v", err)
+					return
+				}
+
+				var mu sync.Mutex
+				// Append the Cloudinary URL in a thread-safe manner
+				mu.Lock()
+				primageImageURL = uploadResult.SecureURL
+				mu.Unlock()
+
+			default:
+				log.Printf("Unsupported image format: %s", img.ImageType)
+				return
+			}
+		}(req.PrimaryImage)
+		//====================== END Upload Single Image for - Primary Image to cloudinary =====================================================================
 
 		wg.Wait()
 
@@ -303,26 +344,38 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		description := utility.TesxtToLower(req.Description)
 
 		// Save product details and images in the database (if applicable)
-		err = i.Models.CreateInventory(
-			tx,
-			dbCtx,
-			req.Name,
-			description,
-			req.UserId,
-			req.CategoryId,
-			req.SubCategoryId,
-			req.CountryId,
-			req.StateId,
-			req.LgaId,
-			slug,
-			ulid,
-			state.StateSlug,
-			country.Code,
-			lga.LgaSlug,
-			category.CategorySlug,
-			subcategory.SubCategorySlug,
-			req.OfferPrice,
-			urls)
+		err = i.Models.CreateInventory(&data.CreateInventoryParams{
+			Tx:              tx,
+			Ctx:             dbCtx,
+			Name:            req.Name,
+			Description:     description,
+			UserID:          req.UserId,
+			CategoryID:      req.CategoryId,
+			SubcategoryID:   req.SubCategoryId,
+			CountryID:       req.CountryId,
+			StateID:         req.StateId,
+			LgaID:           req.LgaId,
+			Slug:            slug,
+			ULID:            ulid,
+			StateSlug:       state.StateSlug,
+			CountrySlug:     country.Code,
+			LgaSlug:         lga.LgaSlug,
+			CategorySlug:    category.CategorySlug,
+			SubcategorySlug: subcategory.SubCategorySlug,
+			OfferPrice:      req.OfferPrice,
+			URLs:            urls,
+
+			ProductPurpose:  req.ProductPurpose,
+			Quantity:        req.Quantity,
+			IsAvailable:     req.IsAvailable,
+			RentalDuration:  req.RentalDuration,
+			SecurityDeposit: req.SecurityDeposit,
+			Tags:            req.Tags,
+			Metadata:        req.Metadata,
+			Negotiable:      req.Negotiable,
+			PrimaryImage:    primageImageURL,
+		})
+
 		if err != nil {
 			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
 			return

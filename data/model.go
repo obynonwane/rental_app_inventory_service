@@ -325,29 +325,84 @@ func (u *PostgresRepository) GetSubcategoryByID(ctx context.Context, id string) 
 	return &subCategory, nil
 }
 
-func (u *PostgresRepository) CreateInventory(
-	tx *sql.Tx,
-	ctx context.Context,
-	name,
-	description,
-	userId,
-	categoryId,
-	subcategoryId,
-	countryId,
-	stateId,
-	lgaId,
-	slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subcategorySlug string,
-	offerPrice float64,
-	urls []string) error {
+type CreateInventoryParams struct {
+	Tx              *sql.Tx
+	Ctx             context.Context
+	Name            string
+	Description     string
+	UserID          string
+	CategoryID      string
+	SubcategoryID   string
+	CountryID       string
+	StateID         string
+	LgaID           string
+	Slug            string
+	ULID            string
+	StateSlug       string
+	CountrySlug     string
+	LgaSlug         string
+	CategorySlug    string
+	SubcategorySlug string
+	OfferPrice      float64
+	URLs            []string
 
-	log.Println(slug, "slug")
-	log.Println(ulid, "ulid")
-	log.Println(offerPrice, "offerprice")
-	log.Println(stateSlug, "stateSlug")
-	log.Println(countrySlug, "countrySlug")
-	log.Println(lgaSlug, "lgaSlug")
-	log.Println(categorySlug, "categorySlug")
-	log.Println(subcategorySlug, "subcategorySlug")
+	ProductPurpose  string
+	Quantity        float64
+	IsAvailable     string
+	RentalDuration  string
+	SecurityDeposit float64
+	Tags            string
+	Metadata        string
+	Negotiable      string
+	PrimaryImage    string
+}
+
+// tx *sql.Tx,
+// ctx context.Context,
+// name,
+// description,
+// userId,
+// categoryId,
+// subcategoryId,
+// countryId,
+// stateId,
+// lgaId,
+// slug, ulid, stateSlug, countrySlug, lgaSlug, categorySlug, subcategorySlug string,
+// offerPrice float64,
+// urls []string
+
+func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
+
+	log.Printf("%v", req)
+
+	tx := req.Tx
+	ctx := req.Ctx
+	name := req.Name
+	description := req.Description
+	userId := req.UserID
+	categoryId := req.CategoryID
+	subcategoryId := req.SubcategoryID
+	countryId := req.CountryID
+	stateId := req.StateID
+	lgaId := req.LgaID
+	slug := req.Slug
+	ulid := req.ULID
+	offerPrice := req.OfferPrice
+	stateSlug := req.StateSlug
+	lgaSlug := req.LgaSlug
+	countrySlug := req.CountrySlug
+	categorySlug := req.CategorySlug
+	subcategorySlug := req.SubcategorySlug
+	urls := req.URLs
+
+	// log.Println(slug, "slug")
+	// log.Println(ulid, "ulid")
+	// log.Println(offerPrice, "offerprice")
+	// log.Println(stateSlug, "stateSlug")
+	// log.Println(countrySlug, "countrySlug")
+	// log.Println(lgaSlug, "lgaSlug")
+	// log.Println(categorySlug, "categorySlug")
+	// log.Println(subcategorySlug, "subcategorySlug")
 
 	query := `INSERT INTO inventories (name, description, user_id, category_id, subcategory_id, country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, lga_slug, country_slug, category_slug, subcategory_slug, updated_at, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW()) 

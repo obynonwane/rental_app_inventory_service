@@ -391,15 +391,6 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	negotiable := req.Negotiable
 	primaryImage := req.PrimaryImage
 
-	// log.Println(slug, "slug")
-	// log.Println(ulid, "ulid")
-	// log.Println(offerPrice, "offerprice")
-	// log.Println(stateSlug, "stateSlug")
-	// log.Println(countrySlug, "countrySlug")
-	// log.Println(lgaSlug, "lgaSlug")
-	// log.Println(categorySlug, "categorySlug")
-	// log.Println(subcategorySlug, "subcategorySlug")
-
 	query := `INSERT INTO inventories (
 				name, 
 				description, 
@@ -1310,6 +1301,16 @@ func (r *PostgresRepository) SearchInventory(
 			l.category_slug,
 			l.subcategory_slug,
 			l.country_id,
+
+				l.product_purpose,
+				l.quantity,
+				l.is_available,
+				l.rental_duration,
+				l.security_deposit,
+				l.metadata,
+				l.negotiable,
+				l.primary_image,
+
 			co.name AS country_name,
 			l.state_id,
 			st.name AS state_name,
@@ -1384,6 +1385,16 @@ func (r *PostgresRepository) SearchInventory(
 			&lgaSlug,
 			&categorySlug,
 			&subcategorySlug,
+
+			&inv.ProductPurpose,
+			&inv.Quantity,
+			&inv.IsAvailable,
+			&inv.RentalDuration,
+			&inv.SecurityDeposit,
+			&inv.Metadata,
+			&inv.Negotiable,
+			&inv.PrimaryImage,
+
 			&inv.CountryId,
 			&inv.Country.Name,
 			&inv.StateId,

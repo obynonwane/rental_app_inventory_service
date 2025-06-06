@@ -1300,17 +1300,17 @@ func (r *PostgresRepository) SearchInventory(
 			l.lga_slug,
 			l.category_slug,
 			l.subcategory_slug,
+			
+			l.product_purpose,
+			l.quantity,
+			l.is_available,
+			l.rental_duration,
+			l.security_deposit,
+			l.metadata,
+			l.negotiable,
+			l.primary_image,
+
 			l.country_id,
-
-				l.product_purpose,
-				l.quantity,
-				l.is_available,
-				l.rental_duration,
-				l.security_deposit,
-				l.metadata,
-				l.negotiable,
-				l.primary_image,
-
 			co.name AS country_name,
 			l.state_id,
 			st.name AS state_name,
@@ -1386,14 +1386,14 @@ func (r *PostgresRepository) SearchInventory(
 			&categorySlug,
 			&subcategorySlug,
 
-			&inv.ProductPurpose,
-			&inv.Quantity,
-			&inv.IsAvailable,
-			&inv.RentalDuration,
-			&inv.SecurityDeposit,
-			&inv.Metadata,
-			&inv.Negotiable,
-			&inv.PrimaryImage,
+			&inv.ProductPurpose,  // 19 ✅ string
+			&inv.Quantity,        // 20 float64
+			&inv.IsAvailable,     // 21 ✅ string
+			&inv.RentalDuration,  // 22
+			&inv.SecurityDeposit, // 23
+			&inv.Metadata,        // 24
+			&inv.Negotiable,      // 25 ✅ string
+			&inv.PrimaryImage,    // 26
 
 			&inv.CountryId,
 			&inv.Country.Name,

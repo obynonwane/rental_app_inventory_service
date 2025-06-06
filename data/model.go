@@ -1364,6 +1364,7 @@ func (r *PostgresRepository) SearchInventory(
 			countrySlug          sql.NullString
 			categorySlug         sql.NullString
 			subcategorySlug      sql.NullString
+			primageImage         sql.NullString
 		)
 
 		if err := rows.Scan(
@@ -1393,7 +1394,7 @@ func (r *PostgresRepository) SearchInventory(
 			&inv.SecurityDeposit,
 			&inv.Metadata,
 			&inv.Negotiable,
-			&inv.PrimaryImage,
+			&primageImage,
 
 			&inv.CountryId,
 			&inv.Country.Name,
@@ -1448,6 +1449,11 @@ func (r *PostgresRepository) SearchInventory(
 			inv.SubcategorySlug = subcategorySlug.String
 		} else {
 			inv.SubcategorySlug = ""
+		}
+		if primageImage.Valid {
+			inv.PrimaryImage = primageImage.String
+		} else {
+			inv.PrimaryImage = ""
 		}
 
 		inv.OfferPrice = offerPrice

@@ -1453,7 +1453,7 @@ func (r *PostgresRepository) SearchInventory(
 		if primageImage.Valid {
 			inv.PrimaryImage = primageImage.String
 		} else {
-			inv.PrimaryImage = ""
+			inv.PrimaryImage = "NULL"
 		}
 
 		inv.OfferPrice = offerPrice

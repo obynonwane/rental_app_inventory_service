@@ -831,26 +831,78 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 
 	select {
 
-	case data := <-inventoryExistCh:
+	case di := <-inventoryExistCh:
 
-		user, err := i.Models.GetUserByID(ctx, data.UserId)
+		user, err := i.Models.GetUserByID(ctx, di.UserId)
 		if err != nil {
 			log.Fatal("error getting user who owns inventory", err)
 		}
 
+		// get the country
+		country, err := i.Models.GetCountryByID(ctx, di.CountryId)
+		if err != nil {
+			log.Fatal("error retrieving country: %w", err)
+		}
+
+		// get the state
+		state, err := i.Models.GetStateByID(ctx, di.StateId)
+		if err != nil {
+			log.Fatal("error retrieving state: %w", err)
+		}
+
+		// get the lga
+		lga, err := i.Models.GetLgaByID(ctx, di.LgaId)
+		if err != nil {
+			log.Fatal("error retrieving lga: %w", err)
+		}
+
+		category, err := i.Models.GetCategoryByID(ctx, &data.GetCategoryByIDPayload{CategoryID: di.CategoryId})
+		if err != nil {
+			log.Fatal("error retrieving category: %w", err)
+		}
+
+		subcategory, err := i.Models.GetSubcategoryByID(ctx, di.SubcategoryId)
+		if err != nil {
+			log.Fatal("error retrieving subcategory: %w", err)
+		}
+
 		return &inventory.InventoryResponseDetail{
-			Inventory: &inventory.InventoryResponse{
-				Id:             data.ID,
-				Name:           data.Name,
-				Description:    data.Description,
-				UserId:         data.UserId,
-				CategoryId:     data.CategoryId,
-				SubcategoryId:  data.SubcategoryId,
-				Promoted:       data.Promoted,
-				Deactivated:    data.Deactivated,
-				CreatedAtHuman: formatTimestamp(timestamppb.New(data.CreatedAt)),
-				UpdatedAtHuman: formatTimestamp(timestamppb.New(data.UpdatedAt)),
-				OfferPrice:     data.OfferPrice,
+			Inventory: &inventory.Inventory{
+
+				Id:             di.ID,
+				Name:           di.Name,
+				Description:    di.Description,
+				UserId:         di.UserId,
+				CategoryId:     di.CategoryId,
+				SubcategoryId:  di.SubcategoryId,
+				Promoted:       di.Promoted,
+				Deactivated:    di.Deactivated,
+				CreatedAt:      timestamppb.New(di.CreatedAt),
+				UpdatedAt:      timestamppb.New(di.UpdatedAt),
+				CreatedAtHuman: formatTimestamp(timestamppb.New(di.CreatedAt)),
+				UpdatedAtHuman: formatTimestamp(timestamppb.New(di.UpdatedAt)),
+				Slug:           di.Slug,
+				Ulid:           di.Ulid,
+				OfferPrice:     di.OfferPrice,
+
+				ProductPurpose:  di.ProductPurpose,
+				Quantity:        di.Quantity,
+				IsAvailable:     di.IsAvailable,
+				RentalDuration:  di.RentalDuration,
+				SecurityDeposit: di.SecurityDeposit,
+				Metadata:        di.Metadata,
+				Negotiable:      di.Negotiable,
+				PrimaryImage:    di.PrimaryImage,
+
+				CountryId: di.CountryId,
+				StateId:   di.StateId,
+				LgaId:     di.LgaId,
+
+				StateSlug:       di.StateSlug,
+				CountrySlug:     di.CountrySlug,
+				LgaSlug:         di.LgaSlug,
+				CategorySlug:    di.CategorySlug,
+				SubcategorySlug: di.SubcategorySlug,
 			},
 
 			User: &inventory.User{
@@ -863,7 +915,12 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
 			},
-			Images: mapToProtoImages(data.Images),
+			Country:     &inventory.Country{Id: country.ID, Name: country.Name},
+			State:       &inventory.State{Id: state.ID, Name: state.Name},
+			Lga:         &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
+			Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
+			Subcategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
+			Images:      mapToProtoImages(di.Images),
 		}, nil
 
 	case err := <-errInventoryExistCh:

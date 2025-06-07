@@ -78,6 +78,10 @@ type Inventory struct {
 
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user"`
+	// Add the following:
+	Country *Country `json:"country"`
+	State   *State   `json:"state"`
+	Lga     *Lga     `json:"lga"`
 }
 
 type InventoryImage struct {

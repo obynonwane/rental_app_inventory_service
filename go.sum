@@ -162,6 +162,14 @@ github.com/obynonwane/rental-service-proto v0.0.0-20250606161904-c50b00d8face h1
 github.com/obynonwane/rental-service-proto v0.0.0-20250606161904-c50b00d8face/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/obynonwane/rental-service-proto v0.0.0-20250606165124-d83d7a8eb73b h1:UPz7iDMEp9Y7Cr5Zxu40KuNdO3mqpfrMzk3B9DOBFP4=
 github.com/obynonwane/rental-service-proto v0.0.0-20250606165124-d83d7a8eb73b/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607005453-9e72739d15fe h1:FyQvbGLw0EZKxC+hp0j9ho6nhGcs8QhWMFvrGdQPmiY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607005453-9e72739d15fe/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607010249-3cedbf175137 h1:uLNW/koi3B7enZC3mYeQCflO2/4XcvxbiRZZDlbqmak=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607010249-3cedbf175137/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607023245-131f2536cda9 h1:xpa2aBGVX6VMmpHvB2rFDfTHPYFqF6BQYeTxzFIMrP0=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607023245-131f2536cda9/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607025427-9bd384e892b3 h1:Y0nCuHu5NQHKr8mSnIWZYR6yydIic893dB6XgB+dPEU=
+github.com/obynonwane/rental-service-proto v0.0.0-20250607025427-9bd384e892b3/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/oklog/ulid/v2 v2.1.1 h1:suPZ4ARWLOJLegGFiZZ1dFAkqzhMjL3J1TzI+5wHz8s=
 github.com/oklog/ulid/v2 v2.1.1/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
 github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=

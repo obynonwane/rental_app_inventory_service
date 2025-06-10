@@ -363,6 +363,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 			CategorySlug:    category.CategorySlug,
 			SubcategorySlug: subcategory.SubCategorySlug,
 			OfferPrice:      req.OfferPrice,
+			MinimumPrice:    req.MinimumPrice,
 			URLs:            urls,
 
 			ProductPurpose:  req.ProductPurpose,
@@ -893,6 +894,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				Metadata:        di.Metadata,
 				Negotiable:      di.Negotiable,
 				PrimaryImage:    di.PrimaryImage,
+				MinimumPrice:    di.MinimumPrice,
 
 				CountryId: di.CountryId,
 				StateId:   di.StateId,
@@ -1297,6 +1299,7 @@ func (s *InventoryServer) SearchInventory(
 			Metadata:        di.Metadata,
 			Negotiable:      di.Negotiable,
 			PrimaryImage:    di.PrimaryImage,
+			MinimumPrice:    di.MinimumPrice,
 
 			CountryId: di.CountryId,
 			Country:   &inventory.Country{Id: di.CountryId, Name: di.Country.Name},

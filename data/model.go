@@ -344,6 +344,7 @@ type CreateInventoryParams struct {
 	CategorySlug    string
 	SubcategorySlug string
 	OfferPrice      float64
+	MinimumPrice    float64
 	URLs            []string
 
 	ProductPurpose  string
@@ -390,6 +391,7 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	metadata := req.Metadata
 	negotiable := req.Negotiable
 	primaryImage := req.PrimaryImage
+	minimumPrice := req.MinimumPrice
 
 	query := `INSERT INTO inventories (
 				name, 
@@ -418,10 +420,11 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 				metadata,
 				negotiable,
 				primary_image,
+				minimum_price,
 
 				updated_at, 
 				created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW()) 
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW()) 
 			RETURNING 
 				id, 
 				name, 
@@ -449,6 +452,7 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 				metadata,
 				negotiable,
 				primary_image,
+				minimum_price,
 
 				updated_at, 
 				created_at`
@@ -481,6 +485,7 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		metadata,
 		negotiable,
 		primaryImage,
+		minimumPrice,
 	).Scan(
 		&inventory.ID,
 		&inventory.Name,
@@ -508,6 +513,7 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		&inventory.Metadata,
 		&inventory.Negotiable,
 		&inventory.PrimaryImage,
+		&inventory.MinimumPrice,
 
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,
@@ -648,7 +654,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case inventory_id != "" && slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
 		         FROM inventories 
 		         WHERE id = $1 OR ulid = $2`
 		args = append(args, inventory_id, slug_ulid)
@@ -656,7 +662,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case inventory_id != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
 		         FROM inventories 
 		         WHERE id = $1`
 		args = append(args, inventory_id)
@@ -664,7 +670,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
 		         FROM inventories 
 		         WHERE ulid = $1`
 		args = append(args, slug_ulid)
@@ -721,6 +727,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		&inventory.Metadata,
 		&inventory.Negotiable,
 		&inventory.PrimaryImage,
+		&inventory.MinimumPrice,
 	)
 
 	if err != nil {
@@ -1351,6 +1358,7 @@ func (r *PostgresRepository) SearchInventory(
 			l.metadata,
 			l.negotiable,
 			l.primary_image,
+			l.minimum_price,
 
 			l.country_id,
 			co.name AS country_name,
@@ -1401,6 +1409,7 @@ func (r *PostgresRepository) SearchInventory(
 			slug                 sql.NullString
 			ulid                 sql.NullString
 			offerPrice           float64
+			// minimumPrice         float64
 			stateSlug            sql.NullString
 			lgaSlug              sql.NullString
 			countrySlug          sql.NullString
@@ -1437,6 +1446,7 @@ func (r *PostgresRepository) SearchInventory(
 			&inv.Metadata,
 			&inv.Negotiable,
 			&primageImage,
+			&inv.MinimumPrice,
 
 			&inv.CountryId,
 			&inv.Country.Name,
@@ -1499,6 +1509,7 @@ func (r *PostgresRepository) SearchInventory(
 		}
 
 		inv.OfferPrice = offerPrice
+		// inv.MinimumPrice = minimumPrice
 		inv.CreatedAt = timestamppb.New(createdAt)
 		inv.UpdatedAt = timestamppb.New(updatedAt)
 

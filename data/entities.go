@@ -75,6 +75,7 @@ type Inventory struct {
 	Metadata        string  `json:"metadata"`         // optional JSON string
 	Negotiable      string  `json:"negotiable"`       // e.g., "yes" or "no"
 	PrimaryImage    string  `json:"primary_image"`
+	MinimumPrice    float64 `json:"minimum_price"`
 
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user"`

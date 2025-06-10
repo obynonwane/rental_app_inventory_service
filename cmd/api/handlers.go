@@ -867,6 +867,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 			log.Fatal("error retrieving subcategory: %w", err)
 		}
 
+		log.Println("MINIMUM PRICE", di.MinimumPrice)
 		return &inventory.InventoryResponseDetail{
 			Inventory: &inventory.Inventory{
 
@@ -935,6 +936,9 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 	}
 
 }
+
+
+
 
 func mapToProtoImages(images []data.InventoryImage) []*inventory.InventoryImage {
 	var protoImages []*inventory.InventoryImage

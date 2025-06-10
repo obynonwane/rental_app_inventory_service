@@ -656,7 +656,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
-		         WHERE id = $1 OR ulid = $2`
+		         WHERE id = $1 OR slug = $2`
 		args = append(args, inventory_id, slug_ulid)
 
 	case inventory_id != "":
@@ -672,7 +672,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
-		         WHERE ulid = $1`
+		         WHERE slug = $1`
 		args = append(args, slug_ulid)
 
 	default:

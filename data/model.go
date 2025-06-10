@@ -654,7 +654,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case inventory_id != "" && slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
 		         WHERE id = $1 OR ulid = $2`
 		args = append(args, inventory_id, slug_ulid)
@@ -662,7 +662,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case inventory_id != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
 		         WHERE id = $1`
 		args = append(args, inventory_id)
@@ -670,7 +670,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, metadata, negotiable, primary_image, minimum_price
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
 		         WHERE ulid = $1`
 		args = append(args, slug_ulid)
@@ -692,7 +692,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		// countrySlug          sql.NullString
 		// categorySlug         sql.NullString
 		// subcategorySlug      sql.NullString
-		// primageImage         sql.NullString
+		primageImage sql.NullString
 	)
 
 	err := row.Scan(
@@ -724,10 +724,10 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		&inventory.IsAvailable,
 		&inventory.RentalDuration,
 		&inventory.SecurityDeposit,
+		&inventory.MinimumPrice,
 		&inventory.Metadata,
 		&inventory.Negotiable,
-		&inventory.PrimaryImage,
-		&inventory.MinimumPrice,
+		&primageImage,
 	)
 
 	if err != nil {
@@ -739,6 +739,12 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	inventory.CreatedAt = createdAt
 	inventory.UpdatedAt = updatedAt
+
+	if primageImage.Valid {
+		inventory.PrimaryImage = primageImage.String
+	} else {
+		inventory.PrimaryImage = "NULL"
+	}
 
 	// Fetch images for the single inventory
 	imgSQL := `
@@ -1410,12 +1416,12 @@ func (r *PostgresRepository) SearchInventory(
 			ulid                 sql.NullString
 			offerPrice           float64
 			// minimumPrice         float64
-			stateSlug            sql.NullString
-			lgaSlug              sql.NullString
-			countrySlug          sql.NullString
-			categorySlug         sql.NullString
-			subcategorySlug      sql.NullString
-			primageImage         sql.NullString
+			stateSlug       sql.NullString
+			lgaSlug         sql.NullString
+			countrySlug     sql.NullString
+			categorySlug    sql.NullString
+			subcategorySlug sql.NullString
+			primageImage    sql.NullString
 		)
 
 		if err := rows.Scan(

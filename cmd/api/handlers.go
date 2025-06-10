@@ -341,7 +341,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		}()
 
 		slug, ulid := utility.GenerateSlug(req.Name)
-		description := utility.TesxtToLower(req.Description)
+		description := utility.TextToLower(req.Description)
 
 		// Save product details and images in the database (if applicable)
 		err = i.Models.CreateInventory(&data.CreateInventoryParams{
@@ -936,9 +936,6 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 	}
 
 }
-
-
-
 
 func mapToProtoImages(images []data.InventoryImage) []*inventory.InventoryImage {
 	var protoImages []*inventory.InventoryImage

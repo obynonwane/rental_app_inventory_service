@@ -3,25 +3,37 @@ package utility
 import (
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/oklog/ulid/v2"
-
-	"time"
 )
 
+// GenerateSlug creates a URL-friendly slug from the given name, removing special characters,
+// converting spaces to dashes, normalizing case, and appending a ULID
 func GenerateSlug(name string) (string, string) {
-	// Normalize name (remove special chars, spaces to dashes, lowercase)
+	// Lowercase and replace spaces with dashes
 	base := strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 
-	// Generate a ULID
-	t := time.Now().UTC()
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
-	id := ulid.MustNew(ulid.Timestamp(t), entropy)
+	// Remove all characters except lowercase letters, numbers, and dashes
+	re := regexp.MustCompile(`[^a-z0-9-]+`)
+	base = re.ReplaceAllString(base, "")
 
-	return fmt.Sprintf("%s-%s", base, id.String()), id.String()
+	// Generate a ULID for uniqueness
+	now := time.Now().UTC()
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(now.UnixNano())), 0)
+	id := ulid.MustNew(ulid.Timestamp(now), entropy)
+
+	slug := fmt.Sprintf("%s-%s", base, id.String())
+	return slug, id.String()
 }
 
-func TesxtToLower(desc string) string {
-	return strings.ToLower(desc)
+// TextToLower normalizes a description by converting it to lowercase
+func TextToLower(desc string) string {
+	// Remove leading/trailing whitespace
+	d := strings.TrimSpace(desc)
+
+	// Convert to lowercase
+	return strings.ToLower(d)
 }

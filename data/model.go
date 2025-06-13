@@ -1691,6 +1691,8 @@ func (r *PostgresRepository) SearchInventory(
 }
 
 type CreateBookingPayload struct {
+	OwnerId           string
+	RenterId          string
 	InventoryId       string
 	RentalType        string
 	RentalDuration    int32
@@ -1700,11 +1702,87 @@ type CreateBookingPayload struct {
 	TotalAmount       float64
 	StartDate         time.Time // for DATE (YYYY-MM-DD)
 	EndDate           time.Time // for DATE (YYYY-MM-DD)
-	EndTime           time.Time // for TIME (HH:MM)
+	EndTime           string
 }
 
-func (r *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBookingPayload) (*InventoryBooking, error) {
+func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBookingPayload) (*InventoryBooking, error) {
 
-	log.Println(p, "the details to be submitted")
-	return nil, nil
+	log.Println(p)
+	query := `INSERT INTO inventory_bookings 
+		(
+			inventory_id, 
+			renter_id, 
+			owner_id, 
+			start_date, 
+			end_date, 
+			end_time, 
+			offer_price_per_unit, 
+			total_amount, 
+			security_deposit, 
+			quantity, 
+			rental_type, 
+			rental_duration,
+			created_at, 
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) 
+		RETURNING 
+			id,  
+			inventory_id,  
+			renter_id,  
+			owner_id,  
+			start_date,  
+			end_date,  
+			end_time,  
+			offer_price_per_unit,  
+			total_amount,  
+			security_deposit,  
+			quantity,  
+			status,  
+			payment_status,  
+			rental_type,  
+			rental_duration,  
+			created_at,  
+			updated_at`
+
+	var inventoryBooking InventoryBooking
+	err := b.Conn.QueryRowContext(
+		ctx,
+		query,
+		p.InventoryId,
+		p.RenterId,
+		p.OwnerId,
+		p.StartDate,
+		p.EndDate,
+		p.EndTime,
+		p.OfferPricePerUnit,
+		p.TotalAmount,
+		p.SecurityDeposit,
+		p.Quantity,
+		p.RentalType,
+		p.RentalDuration,
+	).Scan(
+		&inventoryBooking.ID,
+		&inventoryBooking.InventoryID,
+		&inventoryBooking.RenterID,
+		&inventoryBooking.OwnerID,
+		&inventoryBooking.StartDate,
+		&inventoryBooking.EndDate,
+		&inventoryBooking.EndTime,
+		&inventoryBooking.OfferPricePerUnit,
+		&inventoryBooking.TotalAmount,
+		&inventoryBooking.SecurityDeposit,
+		&inventoryBooking.Quantity,
+		&inventoryBooking.Status,
+		&inventoryBooking.PaymentStatus,
+		&inventoryBooking.RentalType,
+		&inventoryBooking.RentalDuration,
+		&inventoryBooking.CreatedAt,
+		&inventoryBooking.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create inventory booking: %w", err)
+	}
+
+	return &inventoryBooking, nil
 }

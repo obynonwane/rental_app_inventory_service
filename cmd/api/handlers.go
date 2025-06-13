@@ -160,7 +160,7 @@ func (app *Config) CreateBooking(w http.ResponseWriter, r *http.Request) {
 
 	timeLayout := "15:04" // for time in HH:MM
 
-	endTime, err := time.Parse(timeLayout, requestPayload.EndTime)
+	_, err = time.Parse(timeLayout, requestPayload.EndTime)
 	if err != nil {
 		app.errorJSON(w, fmt.Errorf("invalid end time format, use HH:MM (24-hour format)"), nil, http.StatusBadRequest)
 		return
@@ -174,9 +174,11 @@ func (app *Config) CreateBooking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// calculate the total amount (quantity * offer_price_per_unit)
-	totalPrice := requestPayload.Quantity * requestPayload.OfferPricePerUnit
+	totalPrice := float64(requestPayload.Quantity) * requestPayload.OfferPricePerUnit * float64(requestPayload.RentalDuration)
 
 	_, err = app.Repo.CreateBooking(timeoutCtx, &data.CreateBookingPayload{
+		OwnerId:           inv.UserId,
+		RenterId:          requestPayload.RenterId,
 		InventoryId:       inv.ID,
 		RentalType:        requestPayload.RentalType,
 		RentalDuration:    int32(requestPayload.RentalDuration),
@@ -186,7 +188,7 @@ func (app *Config) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		TotalAmount:       totalPrice,
 		StartDate:         startDate,
 		EndDate:           endDate,
-		EndTime:           endTime,
+		EndTime:           requestPayload.EndTime,
 	})
 	if err != nil {
 		app.errorJSON(w, err, nil, http.StatusInternalServerError)

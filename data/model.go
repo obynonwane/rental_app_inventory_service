@@ -536,12 +536,76 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	return nil
 }
 
-func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
+// func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
 
-	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at FROM inventories WHERE id = $1`
-	row := u.Conn.QueryRowContext(ctx, query, id)
+// 	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
+// 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
+// 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
+// 		         FROM inventories
+// 		         WHERE id = $1`
+// 	row := u.Conn.QueryRowContext(ctx, query, id)
+
+// 	var inventory Inventory
+
+// 	err := row.Scan(
+// 		&inventory.ID,
+// 		&inventory.Name,
+// 		&inventory.Description,
+// 		&inventory.UserId,
+// 		&inventory.CategoryId,
+// 		&inventory.SubcategoryId,
+// 		&inventory.Promoted,
+// 		&inventory.Deactivated,
+// 		&inventory.UpdatedAt, // Ensure the order matches the query
+// 		&inventory.CreatedAt,
+// 	)
+
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			return nil, fmt.Errorf("no inventory found with ID %s", id)
+// 		}
+// 		return nil, fmt.Errorf("error retrieving inventory by ID: %w", err)
+// 	}
+
+// 	return &inventory, nil
+// }
+
+func (u *PostgresRepository) GetInventoryByID(ctx context.Context, inventory_id string) (*Inventory, error) {
+	var (
+		query string
+		args  []interface{}
+	)
+
+	// Build query based on provided inputs
+	switch {
+
+	case inventory_id != "":
+		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
+				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
+		         FROM inventories 
+		         WHERE id = $1`
+		args = append(args, inventory_id)
+
+	default:
+		return nil, fmt.Errorf("either inventory_id or slug_ulid must be provided")
+	}
 
 	var inventory Inventory
+	row := u.Conn.QueryRowContext(ctx, query, args...)
+
+	var (
+		createdAt, updatedAt time.Time
+		// slug                 sql.NullString
+		// ulid                 sql.NullString
+		// offerPrice           float64
+		// stateSlug            sql.NullString
+		// lgaSlug              sql.NullString
+		// countrySlug          sql.NullString
+		// categorySlug         sql.NullString
+		// subcategorySlug      sql.NullString
+		primageImage sql.NullString
+	)
 
 	err := row.Scan(
 		&inventory.ID,
@@ -552,20 +616,79 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*
 		&inventory.SubcategoryId,
 		&inventory.Promoted,
 		&inventory.Deactivated,
-		&inventory.UpdatedAt, // Ensure the order matches the query
-		&inventory.CreatedAt,
+		&createdAt,
+		&updatedAt,
+
+		&inventory.CountryId,
+		&inventory.StateId,
+		&inventory.LgaId,
+		&inventory.Slug,
+		&inventory.Ulid,
+		&inventory.OfferPrice,
+
+		&inventory.StateSlug,
+		&inventory.CountrySlug,
+		&inventory.LgaSlug,
+		&inventory.CategorySlug,
+		&inventory.SubcategorySlug,
+		&inventory.ProductPurpose,
+		&inventory.Quantity,
+		&inventory.IsAvailable,
+		&inventory.RentalDuration,
+		&inventory.SecurityDeposit,
+		&inventory.MinimumPrice,
+		&inventory.Metadata,
+		&inventory.Negotiable,
+		&primageImage,
 	)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("no inventory found with ID %s", id)
+			return nil, fmt.Errorf("no inventory found")
 		}
-		return nil, fmt.Errorf("error retrieving inventory by ID: %w", err)
+		return nil, fmt.Errorf("error retrieving inventory: %w", err)
 	}
+
+	inventory.CreatedAt = createdAt
+	inventory.UpdatedAt = updatedAt
+
+	if primageImage.Valid {
+		inventory.PrimaryImage = primageImage.String
+	} else {
+		inventory.PrimaryImage = "NULL"
+	}
+
+	// Fetch images for the single inventory
+	imgSQL := `
+		SELECT id, live_url, local_url, inventory_id, created_at, updated_at
+		FROM inventory_images
+		WHERE inventory_id = ANY($1)
+	`
+
+	imgRows, err := u.Conn.QueryContext(ctx, imgSQL, pq.Array([]string{inventory.ID}))
+	if err != nil {
+		return nil, fmt.Errorf("select images: %w", err)
+	}
+	defer imgRows.Close()
+
+	var images []InventoryImage
+	for imgRows.Next() {
+		img := &InventoryImage{}
+		var createdAt, updatedAt time.Time
+		if err := imgRows.Scan(
+			&img.ID, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
+			&createdAt, &updatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan image: %w", err)
+		}
+
+		images = append(images, *img)
+	}
+
+	inventory.Images = images
 
 	return &inventory, nil
 }
-
 func (u *PostgresRepository) GetCountryByID(ctx context.Context, id string) (*Country, error) {
 
 	query := `SELECT id, name, code, updated_at, created_at FROM countries WHERE id = $1`
@@ -1565,4 +1688,101 @@ func (r *PostgresRepository) SearchInventory(
 		Offset:      int32(offset),
 		Limit:       int32(limit),
 	}, nil
+}
+
+type CreateBookingPayload struct {
+	OwnerId           string
+	RenterId          string
+	InventoryId       string
+	RentalType        string
+	RentalDuration    int32
+	SecurityDeposit   float64
+	OfferPricePerUnit float64
+	Quantity          int32
+	TotalAmount       float64
+	StartDate         time.Time // for DATE (YYYY-MM-DD)
+	EndDate           time.Time // for DATE (YYYY-MM-DD)
+	EndTime           string
+}
+
+func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBookingPayload) (*InventoryBooking, error) {
+
+	log.Println(p)
+	query := `INSERT INTO inventory_bookings 
+		(
+			inventory_id, 
+			renter_id, 
+			owner_id, 
+			start_date, 
+			end_date, 
+			end_time, 
+			offer_price_per_unit, 
+			total_amount, 
+			security_deposit, 
+			quantity, 
+			rental_type, 
+			rental_duration,
+			created_at, 
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) 
+		RETURNING 
+			id,  
+			inventory_id,  
+			renter_id,  
+			owner_id,  
+			start_date,  
+			end_date,  
+			end_time,  
+			offer_price_per_unit,  
+			total_amount,  
+			security_deposit,  
+			quantity,  
+			status,  
+			payment_status,  
+			rental_type,  
+			rental_duration,  
+			created_at,  
+			updated_at`
+
+	var inventoryBooking InventoryBooking
+	err := b.Conn.QueryRowContext(
+		ctx,
+		query,
+		p.InventoryId,
+		p.RenterId,
+		p.OwnerId,
+		p.StartDate,
+		p.EndDate,
+		p.EndTime,
+		p.OfferPricePerUnit,
+		p.TotalAmount,
+		p.SecurityDeposit,
+		p.Quantity,
+		p.RentalType,
+		p.RentalDuration,
+	).Scan(
+		&inventoryBooking.ID,
+		&inventoryBooking.InventoryID,
+		&inventoryBooking.RenterID,
+		&inventoryBooking.OwnerID,
+		&inventoryBooking.StartDate,
+		&inventoryBooking.EndDate,
+		&inventoryBooking.EndTime,
+		&inventoryBooking.OfferPricePerUnit,
+		&inventoryBooking.TotalAmount,
+		&inventoryBooking.SecurityDeposit,
+		&inventoryBooking.Quantity,
+		&inventoryBooking.Status,
+		&inventoryBooking.PaymentStatus,
+		&inventoryBooking.RentalType,
+		&inventoryBooking.RentalDuration,
+		&inventoryBooking.CreatedAt,
+		&inventoryBooking.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create inventory booking: %w", err)
+	}
+
+	return &inventoryBooking, nil
 }

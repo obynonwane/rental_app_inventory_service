@@ -1,6 +1,7 @@
 package utility
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -36,4 +37,20 @@ func TextToLower(desc string) string {
 
 	// Convert to lowercase
 	return strings.ToLower(d)
+}
+
+func ValidateBookingDates(startDate, endDate time.Time) error {
+	today := time.Now().Truncate(24 * time.Hour)
+
+	// Check if start date is in the past
+	if startDate.Before(today) {
+		return errors.New("start date cannot be in the past")
+	}
+
+	// Check if end date is before start date
+	if endDate.Before(startDate) {
+		return errors.New("end date cannot be before start date")
+	}
+
+	return nil
 }

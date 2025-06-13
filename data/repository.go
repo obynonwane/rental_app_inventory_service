@@ -29,4 +29,5 @@ type Repository interface {
 	CreateInventoryRatingReply(ctx context.Context, param *ReplyRatingPayload) (*InventoryRatingReply, error)
 	CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error)
 	SearchInventory(ctx context.Context, param *SearchPayload) (*InventoryCollection, error)
+	CreateBooking(ctx context.Context, param *CreateBookingPayload) (*InventoryBooking, error)
 }

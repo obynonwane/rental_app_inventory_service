@@ -164,3 +164,24 @@ type Lga struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type InventoryBooking struct {
+	ID                string    `json:"id"`
+	InventoryID       string    `json:"inventory_id"`
+	RenterID          string    `json:"renter_id"`
+	OwnerID           string    `json:"owner_id"`
+	StartDate         time.Time `json:"start_date"`           // just the date part
+	StartTime         *string   `json:"start_time,omitempty"` // optional, stored as string e.g. "15:04:05"
+	EndDate           time.Time `json:"end_date"`
+	EndTime           *string   `json:"end_time,omitempty"`
+	OfferPricePerUnit float64   `json:"offer_price_per_unit"`
+	TotalAmount       float64   `json:"total_amount"`
+	SecurityDeposit   float64   `json:"security_deposit"`
+	Quantity          float64   `json:"quantity"`
+	Status            string    `json:"status"`
+	PaymentStatus     string    `json:"payment_status"`
+	RentalType        string    `json:"rental_type"` // e.g. hourly, daily
+	RentalDuration    float64   `json:"rental_duration"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}

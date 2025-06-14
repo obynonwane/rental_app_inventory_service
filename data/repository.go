@@ -30,4 +30,5 @@ type Repository interface {
 	CreateUserRatingReply(ctx context.Context, param *ReplyRatingPayload) (*UserRatingReply, error)
 	SearchInventory(ctx context.Context, param *SearchPayload) (*InventoryCollection, error)
 	CreateBooking(ctx context.Context, param *CreateBookingPayload) (*InventoryBooking, error)
+	CreatePurchaseOrder(ctx context.Context, param *CreatePurchaseOrderPayload) (*InventorySale, error)
 }

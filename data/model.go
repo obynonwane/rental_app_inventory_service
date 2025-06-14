@@ -1786,3 +1786,69 @@ func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBooking
 
 	return &inventoryBooking, nil
 }
+
+type CreatePurchaseOrderPayload struct {
+	SellerId          string
+	BuyerId           string
+	InventoryId       string
+	OfferPricePerUnit float64
+	Quantity          int32
+	TotalAmount       float64
+}
+
+func (b *PostgresRepository) CreatePurchaseOrder(ctx context.Context, p *CreatePurchaseOrderPayload) (*InventorySale, error) {
+
+	query := `INSERT INTO inventory_sales
+		(
+			inventory_id, 
+			seller_id, 
+			buyer_id, 
+			offer_price_per_unit, 
+			quantity, 
+			total_amount,
+			created_at, 
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
+		RETURNING 
+			id,  
+			inventory_id, 
+			seller_id, 
+			buyer_id, 
+			offer_price_per_unit, 
+			quantity, 
+			total_amount,
+			status,
+			payment_status,
+			created_at, 
+			updated_at`
+
+	var inventorySale InventorySale
+	err := b.Conn.QueryRowContext(
+		ctx,
+		query,
+		p.InventoryId,
+		p.SellerId,
+		p.BuyerId,
+		p.OfferPricePerUnit,
+		p.Quantity,
+		p.TotalAmount,
+	).Scan(
+		&inventorySale.ID,
+		&inventorySale.InventoryID,
+		&inventorySale.SellerID,
+		&inventorySale.BuyerID,
+		&inventorySale.OfferPricePerUnit,
+		&inventorySale.Quantity,
+		&inventorySale.TotalAmount,
+		&inventorySale.Status,
+		&inventorySale.PaymentStatus,
+		&inventorySale.CreatedAt,
+		&inventorySale.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create purchase order: %w", err)
+	}
+
+	return &inventorySale, nil
+}

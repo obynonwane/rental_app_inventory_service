@@ -70,7 +70,7 @@ func (app *Config) CreatePrurchaseOrder(w http.ResponseWriter, r *http.Request) 
 	// calculate the total amount (quantity * offer_price_per_unit)
 	totalPrice := float64(requestPayload.Quantity) * requestPayload.OfferPricePerUnit
 
-	bookings, err := app.Repo.CreatePurchaseOrder(timeoutCtx, &data.CreatePurchaseOrderPayload{
+	order, err := app.Repo.CreatePurchaseOrder(timeoutCtx, &data.CreatePurchaseOrderPayload{
 		SellerId:          inv.UserId,
 		BuyerId:           requestPayload.BuyerId,
 		InventoryId:       inv.ID,
@@ -89,7 +89,7 @@ func (app *Config) CreatePrurchaseOrder(w http.ResponseWriter, r *http.Request) 
 		Error:      false,
 		StatusCode: http.StatusAccepted,
 		Message:    "purchase order created successfully",
-		Data:       bookings,
+		Data:       order,
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

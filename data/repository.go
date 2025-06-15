@@ -31,4 +31,5 @@ type Repository interface {
 	SearchInventory(ctx context.Context, param *SearchPayload) (*InventoryCollection, error)
 	CreateBooking(ctx context.Context, param *CreateBookingPayload) (*InventoryBooking, error)
 	CreatePurchaseOrder(ctx context.Context, param *CreatePurchaseOrderPayload) (*InventorySale, error)
+	SubmitChat(ctx context.Context, param *Message) (*Chat, error)
 }

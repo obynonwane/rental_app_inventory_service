@@ -1852,3 +1852,57 @@ func (b *PostgresRepository) CreatePurchaseOrder(ctx context.Context, p *CreateP
 
 	return &inventorySale, nil
 }
+
+// Message struct defines the message payload
+type Message struct {
+	Content  string `json:"content"`
+	Sender   string `json:"sender"`
+	Receiver string `json:"receiver"`
+	SentAt   int64  `json:"sent_at"`
+}
+
+func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
+
+
+	query := `INSERT INTO chats
+		(
+			content,
+			sender_id, 
+			receiver_id, 
+			sent_at, 
+			created_at, 
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		RETURNING 
+			id,  
+			content,
+			sender_id, 
+			receiver_id, 
+			sent_at, 
+			created_at, 
+			updated_at`
+
+	var chat Chat
+	err := c.Conn.QueryRowContext(
+		ctx,
+		query,
+		p.Content,
+		p.Sender,
+		p.Receiver,
+		p.SentAt,
+	).Scan(
+		&chat.ID,
+		&chat.Content,
+		&chat.SenderID,
+		&chat.ReceiverID,
+		&chat.SentAt,
+		&chat.CreatedAt,
+		&chat.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create chat: %w", err)
+	}
+
+	return &chat, nil
+}

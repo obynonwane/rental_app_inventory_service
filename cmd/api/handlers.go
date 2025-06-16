@@ -383,7 +383,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		if err != nil {
 			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
 			return
-		}
+		} 
 	}()
 
 	// Immediately return success response to the user

@@ -1853,12 +1853,21 @@ func (b *PostgresRepository) CreatePurchaseOrder(ctx context.Context, p *CreateP
 	return &inventorySale, nil
 }
 
-// Message struct defines the message payload
+// // Message struct defines the message payload
+// type Message struct {
+// 	Content  string `json:"content"`
+// 	Sender   string `json:"sender"`
+// 	Receiver string `json:"receiver"`
+// 	SentAt   int64  `json:"sent_at"`
+
+// }
 type Message struct {
-	Content  string `json:"content"`
-	Sender   string `json:"sender"`
-	Receiver string `json:"receiver"`
-	SentAt   int64  `json:"sent_at"`
+	Content     string `json:"content"`
+	Sender      string `json:"sender"`
+	Receiver    string `json:"receiver"`
+	SentAt      int64  `json:"sent_at"`
+	Type        string `json:"type,omitempty"`        // "text", "image", "file"
+	ContentType string `json:"contentType,omitempty"` // e.g. "image/png", "application/pdf"
 }
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
@@ -1869,16 +1878,20 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 			sender_id, 
 			receiver_id, 
 			sent_at, 
+			type,
+			content_type,
 			created_at, 
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
 		RETURNING 
 			id,  
 			content,
 			sender_id, 
 			receiver_id, 
 			sent_at, 
+			type,
+			content_type,
 			created_at, 
 			updated_at`
 
@@ -1896,6 +1909,8 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		&chat.SenderID,
 		&chat.ReceiverID,
 		&chat.SentAt,
+		&chat.Type,
+		&chat.ContentType,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
 	)

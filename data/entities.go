@@ -201,12 +201,14 @@ type InventorySale struct {
 }
 
 type Chat struct {
-	ID        string    `json:"id"`
-	Content   string    `json:"content"`
+	ID          string    `json:"id"`
+	Content     string    `json:"content"`
 	SenderID    string    `json:"sender"`              // filled in by the server
 	ReceiverID  string    `json:"receiver"`            // who should get it
-	ImageUrl  *string   `json:"image_url,omitempty"` // optional, stored as string e.g. "15:04:05"
-	SentAt    int64     `json:"sent_at"`             // unix millis
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ImageUrl    *string   `json:"image_url,omitempty"` // optional, stored as string e.g. "15:04:05"
+	SentAt      int64     `json:"sent_at"`             // unix millis
+	Type        *string   `json:"type"`
+	ContentType *string   `json:"content_type"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

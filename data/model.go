@@ -1866,11 +1866,12 @@ type Message struct {
 	Sender      string `json:"sender"`
 	Receiver    string `json:"receiver"`
 	SentAt      int64  `json:"sent_at"`
-	Type        string `json:"type,omitempty"`        // "text", "image", "file"
-	ContentType string `json:"contentType,omitempty"` // e.g. "image/png", "application/pdf"
+	Type        string `json:"type,omitempty"`         // "text", "image", "file"
+	ContentType string `json:"content_type,omitempty"` // e.g. "image/png", "application/pdf"
 }
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
+	log.Println("GOT TO REPO")
 
 	query := `INSERT INTO chats
 		(
@@ -1903,6 +1904,8 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		p.Sender,
 		p.Receiver,
 		p.SentAt,
+		p.Type,
+		p.ContentType,
 	).Scan(
 		&chat.ID,
 		&chat.Content,
@@ -1915,6 +1918,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		&chat.UpdatedAt,
 	)
 	if err != nil {
+		log.Println("Error: error creating chat DB error", err)
 		return nil, fmt.Errorf("failed to create chat: %w", err)
 	}
 

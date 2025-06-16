@@ -1853,15 +1853,25 @@ func (b *PostgresRepository) CreatePurchaseOrder(ctx context.Context, p *CreateP
 	return &inventorySale, nil
 }
 
-// Message struct defines the message payload
+// // Message struct defines the message payload
+// type Message struct {
+// 	Content  string `json:"content"`
+// 	Sender   string `json:"sender"`
+// 	Receiver string `json:"receiver"`
+// 	SentAt   int64  `json:"sent_at"`
+
+// }
 type Message struct {
-	Content  string `json:"content"`
-	Sender   string `json:"sender"`
-	Receiver string `json:"receiver"`
-	SentAt   int64  `json:"sent_at"`
+	Content     string `json:"content"`
+	Sender      string `json:"sender"`
+	Receiver    string `json:"receiver"`
+	SentAt      int64  `json:"sent_at"`
+	Type        string `json:"type,omitempty"`         // "text", "image", "file"
+	ContentType string `json:"content_type,omitempty"` // e.g. "image/png", "application/pdf"
 }
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
+	log.Println("GOT TO REPO")
 
 	query := `INSERT INTO chats
 		(
@@ -1869,16 +1879,20 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 			sender_id, 
 			receiver_id, 
 			sent_at, 
+			type,
+			content_type,
 			created_at, 
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
 		RETURNING 
 			id,  
 			content,
 			sender_id, 
 			receiver_id, 
 			sent_at, 
+			type,
+			content_type,
 			created_at, 
 			updated_at`
 
@@ -1890,16 +1904,21 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		p.Sender,
 		p.Receiver,
 		p.SentAt,
+		p.Type,
+		p.ContentType,
 	).Scan(
 		&chat.ID,
 		&chat.Content,
 		&chat.SenderID,
 		&chat.ReceiverID,
 		&chat.SentAt,
+		&chat.Type,
+		&chat.ContentType,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
 	)
 	if err != nil {
+		log.Println("Error: error creating chat DB error", err)
 		return nil, fmt.Errorf("failed to create chat: %w", err)
 	}
 
@@ -1908,7 +1927,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 
 func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
 	query := `
-		SELECT id, content, sender_id, receiver_id, sent_at, created_at, updated_at
+		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, created_at, updated_at
 		FROM chats
 		WHERE (sender_id = $1 AND receiver_id = $2)
 		   OR (sender_id = $2 AND receiver_id = $1)
@@ -1930,6 +1949,8 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 			&chat.SenderID,
 			&chat.ReceiverID,
 			&chat.SentAt,
+			&chat.Type,
+			&chat.ContentType,
 			&chat.CreatedAt,
 			&chat.UpdatedAt,
 		)
@@ -1943,17 +1964,19 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 }
 
 type ChatSummary struct {
-	ID         string    `json:"id"`
-	Content    string    `json:"last_message"`
-	SenderID   string    `json:"sender_id"`
-	ReceiverID string    `json:"receiver_id"`
-	SentAt     int64     `json:"sent_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	PartnerID  string    `json:"partner_id"`
-	FirstName  string    `json:"first_name"`
-	LastName   string    `json:"last_name"`
-	Email      string    `json:"email"`
+	ID          string    `json:"id"`
+	Content     string    `json:"last_message"`
+	SenderID    string    `json:"sender_id"`
+	ReceiverID  string    `json:"receiver_id"`
+	SentAt      int64     `json:"sent_at"`
+	Type        string    `json:"type"`
+	ContentType string    `json:"content_type"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	PartnerID   string    `json:"partner_id"`
+	FirstName   string    `json:"first_name"`
+	LastName    string    `json:"last_name"`
+	Email       string    `json:"email"`
 }
 
 func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]ChatSummary, error) {
@@ -1965,6 +1988,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			chats.sender_id,
 			chats.receiver_id,
 			chats.sent_at,
+			chats.type,
+			chats.content_type,
 			chats.created_at,
 			chats.updated_at,
 			u.id AS partner_id,
@@ -1999,6 +2024,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			&s.SenderID,
 			&s.ReceiverID,
 			&s.SentAt,
+			&s.Type,
+			&s.ContentType,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 			&s.PartnerID,

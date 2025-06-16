@@ -32,4 +32,6 @@ type Repository interface {
 	CreateBooking(ctx context.Context, param *CreateBookingPayload) (*InventoryBooking, error)
 	CreatePurchaseOrder(ctx context.Context, param *CreatePurchaseOrderPayload) (*InventorySale, error)
 	SubmitChat(ctx context.Context, param *Message) (*Chat, error)
+	GetChatList(ctx context.Context, userID string) ([]ChatSummary, error)
+	GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error)
 }

@@ -1863,7 +1863,6 @@ type Message struct {
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
 
-
 	query := `INSERT INTO chats
 		(
 			content,
@@ -1905,4 +1904,113 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 	}
 
 	return &chat, nil
+}
+
+func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
+	query := `
+		SELECT id, content, sender_id, receiver_id, sent_at, created_at, updated_at
+		FROM chats
+		WHERE (sender_id = $1 AND receiver_id = $2)
+		   OR (sender_id = $2 AND receiver_id = $1)
+		ORDER BY sent_at ASC
+	`
+
+	rows, err := c.Conn.QueryContext(ctx, query, userA, userB)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	var chats []Chat
+	for rows.Next() {
+		var chat Chat
+		err := rows.Scan(
+			&chat.ID,
+			&chat.Content,
+			&chat.SenderID,
+			&chat.ReceiverID,
+			&chat.SentAt,
+			&chat.CreatedAt,
+			&chat.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		chats = append(chats, chat)
+	}
+
+	return chats, nil
+}
+
+type ChatSummary struct {
+	ID         string    `json:"id"`
+	Content    string    `json:"last_message"`
+	SenderID   string    `json:"sender_id"`
+	ReceiverID string    `json:"receiver_id"`
+	SentAt     int64     `json:"sent_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	PartnerID  string    `json:"partner_id"`
+	FirstName  string    `json:"first_name"`
+	LastName   string    `json:"last_name"`
+	Email      string    `json:"email"`
+}
+
+func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]ChatSummary, error) {
+	query := `
+		SELECT * FROM (
+		SELECT DISTINCT ON (partner_id)
+			chats.id,
+			chats.content,
+			chats.sender_id,
+			chats.receiver_id,
+			chats.sent_at,
+			chats.created_at,
+			chats.updated_at,
+			u.id AS partner_id,
+			u.first_name,
+			u.last_name,
+			u.email
+		FROM chats
+		JOIN users u
+			ON u.id = CASE
+						WHEN sender_id = $1 THEN receiver_id
+						ELSE sender_id
+					END
+		WHERE sender_id = $1 OR receiver_id = $1
+		ORDER BY partner_id, sent_at DESC
+		) sub
+		ORDER BY sent_at DESC
+	`
+
+	rows, err := r.Conn.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []ChatSummary
+
+	for rows.Next() {
+		var s ChatSummary
+		err := rows.Scan(
+			&s.ID,
+			&s.Content,
+			&s.SenderID,
+			&s.ReceiverID,
+			&s.SentAt,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+			&s.PartnerID,
+			&s.FirstName,
+			&s.LastName,
+			&s.Email,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		summaries = append(summaries, s)
+	}
+
+	return summaries, nil
 }

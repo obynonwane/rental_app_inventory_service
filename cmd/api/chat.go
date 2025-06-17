@@ -207,6 +207,10 @@ func (app *Config) GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if chat == nil {
+		chat = []data.Chat{}
+	}
+
 	// send sms & email notification to both owner and buyer
 	payload := jsonResponse{
 		Error:      false,
@@ -241,6 +245,10 @@ func (app *Config) GetChatList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.errorJSON(w, err, nil, http.StatusInternalServerError)
 		return
+	}
+
+	if chat == nil {
+		chat = []data.ChatSummary{}
 	}
 
 	// send sms & email notification to both owner and buyer

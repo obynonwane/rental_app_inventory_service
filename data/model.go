@@ -2041,3 +2041,24 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 
 	return summaries, nil
 }
+
+func (r *PostgresRepository) GetUnreadChat(ctx context.Context, userID string) (int32, error) {
+	var count int32
+	query := `SELECT COUNT(*) FROM chats WHERE receiver_id = $1 AND is_read = false`
+
+	err := r.Conn.QueryRowContext(ctx, query, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error getting unread chat count: %w", err)
+	}
+
+	return count, nil
+}
+
+func (repo *PostgresRepository) MarkChatAsRead(ctx context.Context, userID, senderID string) error {
+	_, err := repo.Conn.ExecContext(ctx, `
+		UPDATE chats
+		SET is_read = true
+		WHERE receiver_id = $1 AND sender_id = $2 AND is_read = false
+	`, userID, senderID)
+	return err
+}

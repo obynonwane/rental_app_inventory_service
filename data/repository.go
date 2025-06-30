@@ -34,4 +34,6 @@ type Repository interface {
 	SubmitChat(ctx context.Context, param *Message) (*Chat, error)
 	GetChatList(ctx context.Context, userID string) ([]ChatSummary, error)
 	GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error)
+	GetUnreadChat(ctx context.Context, userID string) (int32, error)
+	MarkChatAsRead(ctx context.Context, userID, senderID string) error
 }

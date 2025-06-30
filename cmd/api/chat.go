@@ -247,6 +247,11 @@ func (app *Config) GetChatList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
 	if chat == nil {
 		chat = []data.ChatSummary{}
 	}
@@ -257,6 +262,89 @@ func (app *Config) GetChatList(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusAccepted,
 		Message:    "chat list retrieved successfully",
 		Data:       chat,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+type UnreadChatRequest struct {
+	UserID string `json:"user_id"`
+}
+
+func (app *Config) GetUnreadChat(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload UnreadChatRequest
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	chat, err := app.Repo.GetUnreadChat(timeoutCtx, requestPayload.UserID)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	// send sms & email notification to both owner and buyer
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "unread chat retrieved successfully",
+		Data:       chat,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+type MarkChatRequest struct {
+	UserID   string `json:"user_id"`
+	SenderID string `json:"sender_id"`
+}
+
+func (app *Config) MarkChatAsRead(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload MarkChatRequest
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	err = app.Repo.MarkChatAsRead(timeoutCtx, requestPayload.UserID, requestPayload.SenderID)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	// send sms & email notification to both owner and buyer
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "chat marked successfully",
+		Data:       nil,
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

@@ -209,6 +209,8 @@ type Chat struct {
 	SentAt      int64     `json:"sent_at"`             // unix millis
 	Type        *string   `json:"type"`
 	ContentType *string   `json:"content_type"`
+	IsRead      bool      `json:"is_read"`
+	ReplyTo     *string   `json:"reply_to_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

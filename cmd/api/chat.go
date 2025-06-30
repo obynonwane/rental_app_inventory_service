@@ -161,6 +161,7 @@ func (app *Config) SubmitChat(w http.ResponseWriter, r *http.Request) {
 	chat, err := app.Repo.SubmitChat(timeoutCtx, &data.Message{
 		Content:     requestPayload.Content,
 		Sender:      requestPayload.Sender,
+		ReplyTo:     requestPayload.ReplyTo,
 		Receiver:    requestPayload.Receiver,
 		SentAt:      requestPayload.SentAt,
 		Type:        msgType,

@@ -1862,16 +1862,17 @@ func (b *PostgresRepository) CreatePurchaseOrder(ctx context.Context, p *CreateP
 
 // }
 type Message struct {
-	Content     string `json:"content"`
-	Sender      string `json:"sender"`
-	Receiver    string `json:"receiver"`
-	SentAt      int64  `json:"sent_at"`
-	Type        string `json:"type,omitempty"`         // "text", "image", "file"
-	ContentType string `json:"content_type,omitempty"` // e.g. "image/png", "application/pdf"
+	Content     string  `json:"content"`
+	Sender      string  `json:"sender"`
+	ReplyTo     *string `json:"reply_to"`
+	Receiver    string  `json:"receiver"`
+	SentAt      int64   `json:"sent_at"`
+	Type        string  `json:"type,omitempty"`         // "text", "image", "file"
+	ContentType string  `json:"content_type,omitempty"` // e.g. "image/png", "application/pdf"
 }
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
-	log.Println("GOT TO REPO")
+	log.Println("GOT TO REPO", p)
 
 	query := `INSERT INTO chats
 		(
@@ -1881,10 +1882,11 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 			sent_at, 
 			type,
 			content_type,
+			reply_to_id,
 			created_at, 
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
 		RETURNING 
 			id,  
 			content,
@@ -1893,8 +1895,17 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 			sent_at, 
 			type,
 			content_type,
+			reply_to_id,
 			created_at, 
 			updated_at`
+
+	// Convert empty string to nil for reply_to_id
+	var replyTo interface{}
+	if p.ReplyTo != nil && *p.ReplyTo != "" {
+		replyTo = *p.ReplyTo
+	} else {
+		replyTo = nil
+	}
 
 	var chat Chat
 	err := c.Conn.QueryRowContext(
@@ -1906,6 +1917,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		p.SentAt,
 		p.Type,
 		p.ContentType,
+		replyTo,
 	).Scan(
 		&chat.ID,
 		&chat.Content,
@@ -1914,11 +1926,13 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 		&chat.SentAt,
 		&chat.Type,
 		&chat.ContentType,
+		&chat.ReplyTo,
 		&chat.CreatedAt,
 		&chat.UpdatedAt,
 	)
+
 	if err != nil {
-		log.Println("Error: error creating chat DB error", err)
+		log.Println("Error: failed to create chat DB record", err)
 		return nil, fmt.Errorf("failed to create chat: %w", err)
 	}
 
@@ -1927,7 +1941,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 
 func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
 	query := `
-		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, created_at, updated_at
+		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, is_read, reply_to_id, created_at, updated_at
 		FROM chats
 		WHERE (sender_id = $1 AND receiver_id = $2)
 		   OR (sender_id = $2 AND receiver_id = $1)
@@ -1951,6 +1965,8 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 			&chat.SentAt,
 			&chat.Type,
 			&chat.ContentType,
+			&chat.IsRead,
+			&chat.ReplyTo,
 			&chat.CreatedAt,
 			&chat.UpdatedAt,
 		)
@@ -1960,8 +1976,53 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 		chats = append(chats, chat)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
 	return chats, nil
 }
+
+// func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
+// 	query := `
+// 		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, is_read, reply_to_id, created_at, updated_at
+// 		FROM chats
+// 		WHERE (sender_id = $1 AND receiver_id = $2)
+// 		   OR (sender_id = $2 AND receiver_id = $1)
+// 		ORDER BY sent_at ASC
+// 	`
+
+// 	rows, err := c.Conn.QueryContext(ctx, query, userA, userB)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("query error: %w", err)
+// 	}
+// 	defer rows.Close()
+
+// 	var chats []Chat
+// 	for rows.Next() {
+// 		var chat Chat
+// 		err := rows.Scan(
+// 			&chat.ID,
+// 			&chat.Content,
+// 			&chat.SenderID,
+// 			&chat.ReceiverID,
+// 			&chat.SentAt,
+// 			&chat.Type,
+// 			&chat.ContentType,
+// 			&chat.IsRead,
+// 			&chat.ReplyTo,
+// 			&chat.CreatedAt,
+// 			&chat.UpdatedAt,
+// 		)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("scan error: %w", err)
+// 		}
+// 		chats = append(chats, chat)
+
+// 	}
+
+// 	return chats, nil
+// }
 
 type ChatSummary struct {
 	ID          string    `json:"id"`

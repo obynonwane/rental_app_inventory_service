@@ -79,9 +79,6 @@ func (app *Config) GetUsers(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
 
-
-
-
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
 
 	var wg sync.WaitGroup
@@ -383,7 +380,7 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 		if err != nil {
 			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
 			return
-		} 
+		}
 	}()
 
 	// Immediately return success response to the user
@@ -901,32 +898,40 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				MinimumPrice:    di.MinimumPrice,
 
 				CountryId: di.CountryId,
+				Country:   &inventory.Country{Id: country.ID, Name: country.Name},
 				StateId:   di.StateId,
+				State:     &inventory.State{Id: state.ID, Name: state.Name},
 				LgaId:     di.LgaId,
+				Lga:       &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
+				Images:    mapToProtoImages(di.Images),
+				User:      &inventory.User{Id: user.ID, FirstName: user.FirstName, LastName: user.LastName, Phone: user.Phone, Email: user.Email, Verified: user.Verified, CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)), UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt))},
 
 				StateSlug:       di.StateSlug,
 				CountrySlug:     di.CountrySlug,
 				LgaSlug:         di.LgaSlug,
 				CategorySlug:    di.CategorySlug,
 				SubcategorySlug: di.SubcategorySlug,
+
+				Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
+				SubCategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
 			},
 
-			User: &inventory.User{
-				Id:             user.ID,
-				FirstName:      user.FirstName,
-				LastName:       user.LastName,
-				Phone:          user.Phone,
-				Email:          user.Email,
-				Verified:       user.Verified,
-				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
-				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
-			},
-			Country:     &inventory.Country{Id: country.ID, Name: country.Name},
-			State:       &inventory.State{Id: state.ID, Name: state.Name},
-			Lga:         &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
-			Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
-			Subcategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
-			Images:      mapToProtoImages(di.Images),
+			// User: &inventory.User{
+			// 	Id:             user.ID,
+			// 	FirstName:      user.FirstName,
+			// 	LastName:       user.LastName,
+			// 	Phone:          user.Phone,
+			// 	Email:          user.Email,
+			// 	Verified:       user.Verified,
+			// 	CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
+			// 	UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
+			// },
+			// Country:     &inventory.Country{Id: country.ID, Name: country.Name},
+			// State:       &inventory.State{Id: state.ID, Name: state.Name},
+			// Lga:         &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
+			// Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
+			// Subcategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
+			// Images:      mapToProtoImages(di.Images),
 		}, nil
 
 	case err := <-errInventoryExistCh:

@@ -912,8 +912,9 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				CategorySlug:    di.CategorySlug,
 				SubcategorySlug: di.SubcategorySlug,
 
-				Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
-				SubCategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
+				Category:      &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
+				SubCategory:   &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
+				AverageRating: di.AverageRating,
 			},
 
 			// User: &inventory.User{
@@ -1317,13 +1318,15 @@ func (s *InventoryServer) SearchInventory(
 			LgaId:     di.LgaId,
 			Lga:       &inventory.LGA{Id: di.LgaId, Name: di.Lga.Name, StateId: di.Lga.StateId},
 			Images:    make([]*inventory.InventoryImage, len(di.Images)),
-			User:      &inventory.User{Id: di.User.Id, FirstName: di.User.FirstName, Email: di.User.Email, LastName: di.User.LastName, Phone: di.User.Phone},
+			User:      &inventory.User{Id: di.User.Id, FirstName: di.User.FirstName, Email: di.User.Email, LastName: di.User.LastName, Phone: di.User.Phone, CreatedAt: di.CreatedAt, UpdatedAt: di.UpdatedAt},
 
 			StateSlug:       di.StateSlug,
 			CountrySlug:     di.CountrySlug,
 			LgaSlug:         di.LgaSlug,
 			CategorySlug:    di.CategorySlug,
 			SubcategorySlug: di.SubcategorySlug,
+
+			AverageRating: di.AverageRating,
 		}
 		// map images
 		for i, img := range di.Images {

@@ -83,6 +83,9 @@ type Inventory struct {
 	Country *Country `json:"country"`
 	State   *State   `json:"state"`
 	Lga     *Lga     `json:"lga"`
+
+	AverageRating *float64          `json:"average_rating"` // computed sum
+	Ratings       []InventoryRating `json:"ratings"`
 }
 
 type InventoryImage struct {

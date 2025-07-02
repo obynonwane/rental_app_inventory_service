@@ -536,40 +536,6 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	return nil
 }
 
-// func (u *PostgresRepository) GetInventoryByID(ctx context.Context, id string) (*Inventory, error) {
-
-// 	query := `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
-// 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-// 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
-// 		         FROM inventories
-// 		         WHERE id = $1`
-// 	row := u.Conn.QueryRowContext(ctx, query, id)
-
-// 	var inventory Inventory
-
-// 	err := row.Scan(
-// 		&inventory.ID,
-// 		&inventory.Name,
-// 		&inventory.Description,
-// 		&inventory.UserId,
-// 		&inventory.CategoryId,
-// 		&inventory.SubcategoryId,
-// 		&inventory.Promoted,
-// 		&inventory.Deactivated,
-// 		&inventory.UpdatedAt, // Ensure the order matches the query
-// 		&inventory.CreatedAt,
-// 	)
-
-// 	if err != nil {
-// 		if err == sql.ErrNoRows {
-// 			return nil, fmt.Errorf("no inventory found with ID %s", id)
-// 		}
-// 		return nil, fmt.Errorf("error retrieving inventory by ID: %w", err)
-// 	}
-
-// 	return &inventory, nil
-// }
-
 func (u *PostgresRepository) GetInventoryByID(ctx context.Context, inventory_id string) (*Inventory, error) {
 	var (
 		query string
@@ -686,6 +652,21 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, inventory_id 
 	}
 
 	inventory.Images = images
+
+	// inventory rating
+	// Average rating query for one inventory
+	ratingSQL := `
+    SELECT COALESCE(AVG(rating), 0) AS average_rating
+    FROM inventory_ratings
+    WHERE inventory_id = $1
+`
+	var avgRating float64
+	err = u.Conn.QueryRowContext(ctx, ratingSQL, inventory.ID).Scan(&avgRating)
+	if err != nil {
+		return nil, fmt.Errorf("select average rating: %w", err)
+	}
+	// Assign pointer if protobuf expects *float64, else just assign float64
+	inventory.AverageRating = &avgRating
 
 	return &inventory, nil
 }
@@ -897,6 +878,20 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	}
 
 	inventory.Images = images
+
+	// Average rating query for one inventory
+	ratingSQL := `
+    SELECT COALESCE(AVG(rating), 0) AS average_rating
+    FROM inventory_ratings
+    WHERE inventory_id = $1
+`
+	var avgRating float64
+	err = u.Conn.QueryRowContext(ctx, ratingSQL, inventory.ID).Scan(&avgRating)
+	if err != nil {
+		return nil, fmt.Errorf("select average rating: %w", err)
+	}
+	// Assign pointer if protobuf expects *float64, else just assign float64
+	inventory.AverageRating = &avgRating
 
 	return &inventory, nil
 }
@@ -1681,6 +1676,40 @@ func (r *PostgresRepository) SearchInventory(
 		}
 	}
 
+	// Fetch average ratings in batch — ONLY this part is new
+	if len(ids) > 0 {
+		ratingSQL := `
+			SELECT inventory_id, COALESCE(AVG(rating), 0) AS average_rating
+			FROM inventory_ratings
+			WHERE inventory_id = ANY($1)
+			GROUP BY inventory_id
+		`
+		ratingRows, err := r.Conn.QueryContext(ctx, ratingSQL, pq.Array(ids))
+		if err != nil {
+			return nil, fmt.Errorf("select average ratings: %w", err)
+		}
+		defer ratingRows.Close()
+
+		ratingMap := make(map[string]float64)
+		for ratingRows.Next() {
+			var inventoryID string
+			var avgRating float64
+			if err := ratingRows.Scan(&inventoryID, &avgRating); err != nil {
+				return nil, fmt.Errorf("scan rating: %w", err)
+			}
+			ratingMap[inventoryID] = avgRating
+		}
+		for _, inv := range page {
+
+			if avg, ok := ratingMap[inv.Id]; ok {
+				inv.AverageRating = &avg
+			} else {
+				inv.AverageRating = float64Ptr(0.0)
+			}
+
+		}
+	}
+
 	// Return paginated result
 	return &InventoryCollection{
 		Inventories: page,
@@ -1688,6 +1717,10 @@ func (r *PostgresRepository) SearchInventory(
 		Offset:      int32(offset),
 		Limit:       int32(limit),
 	}, nil
+}
+
+func float64Ptr(f float64) *float64 {
+	return &f
 }
 
 type CreateBookingPayload struct {

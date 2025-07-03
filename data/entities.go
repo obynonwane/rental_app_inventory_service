@@ -217,3 +217,42 @@ type Chat struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
+
+type BusinessKyc struct {
+	ID                 string  `json:"id"`
+	Address            string  `json:"address"`
+	CacNumber          *string `json:"cac_number,omitempty"`
+	DisplayName        string  `json:"display_name"`
+	Description        string  `json:"description"`
+	KeyBonus           string  `json:"key_bonus"`
+	BusinessRegistered string  `json:"business_registered"` // e.g., "YES" or "NO"
+
+	UserID string `json:"user_id"`
+	User   *User  `json:"user,omitempty"`
+
+	CountryID string   `json:"country_id"`
+	Country   *Country `json:"country,omitempty"`
+
+	StateID string `json:"state_id"`
+	State   *State `json:"state,omitempty"`
+
+	LgaID string `json:"lga_id"`
+	Lga   *Lga   `json:"lga,omitempty"`
+
+	PlanID string `json:"plan_id"`
+	Plan   *Plan  `json:"plan,omitempty"`
+
+	Verified   bool      `json:"verified"`
+	ActivePlan bool      `json:"active_plan"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type Plan struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	MonthlyPrice float64   `json:"monthly_price"`
+	AnnualPrice  float64   `json:"annual_price"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

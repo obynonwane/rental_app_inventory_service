@@ -2156,3 +2156,121 @@ func (repo *PostgresRepository) MarkChatAsRead(ctx context.Context, userID, send
 	`, userID, senderID)
 	return err
 }
+
+type BusinessAnalytics struct {
+	BusinessKycID      string  `json:"business_kyc_id"`
+	DisplayName        string  `json:"display_name"`
+	Description        string  `json:"description"`
+	Address            string  `json:"address"`
+	CacNumber          *string `json:"cac_number,omitempty"`
+	KeyBonus           string  `json:"key_bonus"`
+	BusinessRegistered string  `json:"business_registered"`
+	Verified           bool    `json:"verified"`
+	ActivePlan         bool    `json:"active_plan"`
+	CountryID          string  `json:"country_id"`
+	StateID            string  `json:"state_id"`
+	LgaID              string  `json:"lga_id"`
+
+	UserID    string `json:"user_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+
+	PlanName         string  `json:"plan_name"`
+	TotalInventories int64   `json:"total_inventories"`
+	AverageRating    float64 `json:"average_rating"`
+}
+
+func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]BusinessAnalytics, error) {
+
+	log.Println("GOT TO THE MODEL")
+	query := `
+        SELECT
+            bk.id AS business_kyc_id,
+            bk.display_name,
+            bk.description,
+            bk.address,
+            bk.cac_number,
+            bk.key_bonus,
+            bk.business_registered,
+            bk.verified,
+            bk.active_plan,
+            bk.country_id,
+            bk.state_id,
+            bk.lga_id,
+
+            u.id AS user_id,
+            u.first_name,
+            u.last_name,
+            u.email,
+
+            p.name AS plan_name,
+            COUNT(i.id) AS total_inventories,
+            COALESCE(AVG(ir.rating), 0) AS average_rating
+        FROM
+            business_kycs bk
+        JOIN
+            plans p ON bk.plan_id = p.id
+        JOIN
+            users u ON bk.user_id = u.id
+        LEFT JOIN
+            inventories i ON i.user_id = u.id
+        LEFT JOIN
+            inventory_ratings ir ON ir.inventory_id = i.id
+        WHERE
+            LOWER(p.name) != 'free'
+            AND bk.active_plan = true
+        GROUP BY
+            bk.id, bk.display_name, bk.description, bk.address, bk.cac_number, bk.key_bonus,
+            bk.business_registered, bk.verified, bk.active_plan,
+            bk.country_id, bk.state_id, bk.lga_id,
+            u.id, u.first_name, u.last_name, u.email,
+            p.name;
+    `
+
+	rows, err := r.Conn.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []BusinessAnalytics
+
+	for rows.Next() {
+		var ba BusinessAnalytics
+		err := rows.Scan(
+			&ba.BusinessKycID,
+			&ba.DisplayName,
+			&ba.Description,
+			&ba.Address,
+			&ba.CacNumber,
+			&ba.KeyBonus,
+			&ba.BusinessRegistered,
+			&ba.Verified,
+			&ba.ActivePlan,
+			&ba.CountryID,
+			&ba.StateID,
+			&ba.LgaID,
+
+			&ba.UserID,
+			&ba.FirstName,
+			&ba.LastName,
+			&ba.Email,
+
+			&ba.PlanName,
+			&ba.TotalInventories,
+			&ba.AverageRating,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("row scan failed: %w", err)
+		}
+		results = append(results, ba)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	log.Println(results, "THE RESULTS")
+	return results, nil
+}

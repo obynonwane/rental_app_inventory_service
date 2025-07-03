@@ -83,6 +83,11 @@ type Inventory struct {
 	Country *Country `json:"country"`
 	State   *State   `json:"state"`
 	Lga     *Lga     `json:"lga"`
+
+	AverageRating *float64          `json:"average_rating"` // computed sum
+	TotalRatings  *int32            `json:"total_ratings"`
+	UserVerified  *bool             `json:"user_verified"`
+	Ratings       []InventoryRating `json:"ratings"`
 }
 
 type InventoryImage struct {
@@ -213,4 +218,43 @@ type Chat struct {
 	ReplyTo     *string   `json:"reply_to_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type BusinessKyc struct {
+	ID                 string  `json:"id"`
+	Address            string  `json:"address"`
+	CacNumber          *string `json:"cac_number,omitempty"`
+	DisplayName        string  `json:"display_name"`
+	Description        string  `json:"description"`
+	KeyBonus           string  `json:"key_bonus"`
+	BusinessRegistered string  `json:"business_registered"` // e.g., "YES" or "NO"
+
+	UserID string `json:"user_id"`
+	User   *User  `json:"user,omitempty"`
+
+	CountryID string   `json:"country_id"`
+	Country   *Country `json:"country,omitempty"`
+
+	StateID string `json:"state_id"`
+	State   *State `json:"state,omitempty"`
+
+	LgaID string `json:"lga_id"`
+	Lga   *Lga   `json:"lga,omitempty"`
+
+	PlanID string `json:"plan_id"`
+	Plan   *Plan  `json:"plan,omitempty"`
+
+	Verified   bool      `json:"verified"`
+	ActivePlan bool      `json:"active_plan"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type Plan struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	MonthlyPrice float64   `json:"monthly_price"`
+	AnnualPrice  float64   `json:"annual_price"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 )
 
 func (app *Config) PremiumPartner(w http.ResponseWriter, r *http.Request) {
 
-
-	log.Println("GOT TO CONTROLLER")
 	// Create a context with a timeout for the asynchronous task
 	ctx := r.Context()
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration

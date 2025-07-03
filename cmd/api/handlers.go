@@ -915,24 +915,9 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				Category:      &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
 				SubCategory:   &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
 				AverageRating: di.AverageRating,
+				TotalRatings:  di.TotalRatings,
+				UserVerified: di.UserVerified,
 			},
-
-			// User: &inventory.User{
-			// 	Id:             user.ID,
-			// 	FirstName:      user.FirstName,
-			// 	LastName:       user.LastName,
-			// 	Phone:          user.Phone,
-			// 	Email:          user.Email,
-			// 	Verified:       user.Verified,
-			// 	CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
-			// 	UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
-			// },
-			// Country:     &inventory.Country{Id: country.ID, Name: country.Name},
-			// State:       &inventory.State{Id: state.ID, Name: state.Name},
-			// Lga:         &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
-			// Category:    &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
-			// Subcategory: &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
-			// Images:      mapToProtoImages(di.Images),
 		}, nil
 
 	case err := <-errInventoryExistCh:

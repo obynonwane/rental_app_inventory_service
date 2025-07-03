@@ -788,15 +788,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	var (
 		createdAt, updatedAt time.Time
-		// slug                 sql.NullString
-		// ulid                 sql.NullString
-		// offerPrice           float64
-		// stateSlug            sql.NullString
-		// lgaSlug              sql.NullString
-		// countrySlug          sql.NullString
-		// categorySlug         sql.NullString
-		// subcategorySlug      sql.NullString
-		primageImage sql.NullString
+		primageImage         sql.NullString
 	)
 
 	err := row.Scan(
@@ -850,6 +842,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		inventory.PrimaryImage = "NULL"
 	}
 
+	//============================================================================================================================
 	// Fetch images for the single inventory
 	imgSQL := `
 		SELECT id, live_url, local_url, inventory_id, created_at, updated_at
@@ -879,21 +872,63 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	inventory.Images = images
 
-	// Average rating query for one inventory
+	//============================================================================================================================
+	// Average rating and count query for one inventory
 	ratingSQL := `
-    SELECT COALESCE(AVG(rating), 0) AS average_rating
-    FROM inventory_ratings
-    WHERE inventory_id = $1
+    SELECT 
+      COALESCE(AVG(rating), 0) AS average_rating,
+      COUNT(*) AS total_ratings
+    FROM 
+      inventory_ratings
+    WHERE 
+      inventory_id = $1
 `
+
 	var avgRating float64
-	err = u.Conn.QueryRowContext(ctx, ratingSQL, inventory.ID).Scan(&avgRating)
+	var totalRatings int32
+
+	err = u.Conn.QueryRowContext(ctx, ratingSQL, inventory.ID).Scan(&avgRating, &totalRatings)
 	if err != nil {
-		return nil, fmt.Errorf("select average rating: %w", err)
+		return nil, fmt.Errorf("select average rating and count: %w", err)
 	}
-	// Assign pointer if protobuf expects *float64, else just assign float64
+
+	// If your protobuf field is *float64, use pointers:
 	inventory.AverageRating = &avgRating
 
+	// For count, you might want a new field:
+	inventory.TotalRatings = &totalRatings // or assign to int64 directly if non-pointer
+	//=================================================================================================================================
+
+	// Check user KYC
+	userVerification := u.GetUserVerified(ctx, inventory.UserId)
+	inventory.UserVerified = &userVerification
+
 	return &inventory, nil
+}
+
+func (u *PostgresRepository) GetUserVerified(ctx context.Context, userID string) bool {
+	var verified bool
+
+	renterKycSQL := `SELECT verified FROM renter_kycs WHERE user_id = $1`
+	err := u.Conn.QueryRowContext(ctx, renterKycSQL, userID).Scan(&verified)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Not found in renter_kycs, check business_kycs
+			businessKycSQL := `SELECT verified FROM business_kycs WHERE user_id = $1`
+			err = u.Conn.QueryRowContext(ctx, businessKycSQL, userID).Scan(&verified)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					// Not found in either table, default to false
+					return false
+				}
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return verified
 }
 
 func (u *PostgresRepository) CreateInventoryRating(
@@ -2167,9 +2202,15 @@ type BusinessAnalytics struct {
 	BusinessRegistered string  `json:"business_registered"`
 	Verified           bool    `json:"verified"`
 	ActivePlan         bool    `json:"active_plan"`
-	CountryID          string  `json:"country_id"`
-	StateID            string  `json:"state_id"`
-	LgaID              string  `json:"lga_id"`
+
+	CountryID   string `json:"country_id"`
+	CountryName string `json:"country_name"` // ✅ new
+
+	StateID   string `json:"state_id"`
+	StateName string `json:"state_name"` // ✅ new
+
+	LgaID   string `json:"lga_id"`
+	LgaName string `json:"lga_name"` // ✅ new
 
 	UserID    string `json:"user_id"`
 	FirstName string `json:"first_name"`
@@ -2182,51 +2223,63 @@ type BusinessAnalytics struct {
 }
 
 func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]BusinessAnalytics, error) {
-
 	log.Println("GOT TO THE MODEL")
+
 	query := `
-        SELECT
-            bk.id AS business_kyc_id,
-            bk.display_name,
-            bk.description,
-            bk.address,
-            bk.cac_number,
-            bk.key_bonus,
-            bk.business_registered,
-            bk.verified,
-            bk.active_plan,
-            bk.country_id,
-            bk.state_id,
-            bk.lga_id,
+		SELECT
+			bk.id AS business_kyc_id,
+			bk.display_name,
+			bk.description,
+			bk.address,
+			bk.cac_number,
+			bk.key_bonus,
+			bk.business_registered,
+			bk.verified,
+			bk.active_plan,
 
-            u.id AS user_id,
-            u.first_name,
-            u.last_name,
-            u.email,
+			bk.country_id,
+			co.name AS country_name,  
+			bk.state_id,
+			st.name AS state_name,    
+			bk.lga_id,
+			lg.name AS lga_name,      
 
-            p.name AS plan_name,
-            COUNT(i.id) AS total_inventories,
-            COALESCE(AVG(ir.rating), 0) AS average_rating
-        FROM
-            business_kycs bk
-        JOIN
-            plans p ON bk.plan_id = p.id
-        JOIN
-            users u ON bk.user_id = u.id
-        LEFT JOIN
-            inventories i ON i.user_id = u.id
-        LEFT JOIN
-            inventory_ratings ir ON ir.inventory_id = i.id
-        WHERE
-            LOWER(p.name) != 'free'
-            AND bk.active_plan = true
-        GROUP BY
-            bk.id, bk.display_name, bk.description, bk.address, bk.cac_number, bk.key_bonus,
-            bk.business_registered, bk.verified, bk.active_plan,
-            bk.country_id, bk.state_id, bk.lga_id,
-            u.id, u.first_name, u.last_name, u.email,
-            p.name;
-    `
+			u.id AS user_id,
+			u.first_name,
+			u.last_name,
+			u.email,
+
+			p.name AS plan_name,
+			COUNT(i.id) AS total_inventories,
+			COALESCE(AVG(ir.rating), 0) AS average_rating
+		FROM
+			business_kycs bk
+		JOIN
+			plans p ON bk.plan_id = p.id
+		JOIN
+			users u ON bk.user_id = u.id
+		LEFT JOIN
+			inventories i ON i.user_id = u.id
+		LEFT JOIN
+			inventory_ratings ir ON ir.inventory_id = i.id
+		LEFT JOIN
+			countries co ON co.id = bk.country_id
+		LEFT JOIN
+			states st ON st.id = bk.state_id
+		LEFT JOIN
+			lgas lg ON lg.id = bk.lga_id
+		WHERE
+			LOWER(p.name) != 'free'
+			AND bk.active_plan = true
+		GROUP BY
+			bk.id, bk.display_name, bk.description, bk.address, bk.cac_number, bk.key_bonus,
+			bk.business_registered, bk.verified, bk.active_plan,
+			bk.country_id, co.name,
+			bk.state_id, st.name,
+			bk.lga_id, lg.name,
+			u.id, u.first_name, u.last_name, u.email,
+			p.name;
+	`
 
 	rows, err := r.Conn.QueryContext(ctx, query)
 	if err != nil {
@@ -2248,9 +2301,13 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 			&ba.BusinessRegistered,
 			&ba.Verified,
 			&ba.ActivePlan,
+
 			&ba.CountryID,
+			&ba.CountryName,
 			&ba.StateID,
+			&ba.StateName,
 			&ba.LgaID,
+			&ba.LgaName,
 
 			&ba.UserID,
 			&ba.FirstName,

@@ -85,6 +85,8 @@ type Inventory struct {
 	Lga     *Lga     `json:"lga"`
 
 	AverageRating *float64          `json:"average_rating"` // computed sum
+	TotalRatings  *int32            `json:"total_ratings"`
+	UserVerified  *bool             `json:"user_verified"`
 	Ratings       []InventoryRating `json:"ratings"`
 }
 

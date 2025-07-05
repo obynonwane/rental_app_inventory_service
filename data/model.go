@@ -2357,3 +2357,11 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 	log.Println(results, "THE RESULTS")
 	return results, nil
 }
+
+func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
+	return nil
+
+}
+func (r *PostgresRepository) UploadShopBanner(ctx context.Context, img, userId string) error {
+	return nil
+}

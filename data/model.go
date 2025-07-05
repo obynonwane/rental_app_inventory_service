@@ -1789,6 +1789,7 @@ type CreateBookingPayload struct {
 	StartDate         time.Time // for DATE (YYYY-MM-DD)
 	EndDate           time.Time // for DATE (YYYY-MM-DD)
 	EndTime           string
+	StartTime         string
 }
 
 func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBookingPayload) (*InventoryBooking, error) {
@@ -1808,10 +1809,11 @@ func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBooking
 			quantity, 
 			rental_type, 
 			rental_duration,
+			start_time,
 			created_at, 
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()) 
 		RETURNING 
 			id,  
 			inventory_id,  
@@ -1828,6 +1830,7 @@ func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBooking
 			payment_status,  
 			rental_type,  
 			rental_duration,  
+			start_time,
 			created_at,  
 			updated_at`
 
@@ -1847,6 +1850,7 @@ func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBooking
 		p.Quantity,
 		p.RentalType,
 		p.RentalDuration,
+		p.StartTime,
 	).Scan(
 		&inventoryBooking.ID,
 		&inventoryBooking.InventoryID,
@@ -1863,6 +1867,7 @@ func (b *PostgresRepository) CreateBooking(ctx context.Context, p *CreateBooking
 		&inventoryBooking.PaymentStatus,
 		&inventoryBooking.RentalType,
 		&inventoryBooking.RentalDuration,
+		&inventoryBooking.StartTime,
 		&inventoryBooking.CreatedAt,
 		&inventoryBooking.UpdatedAt,
 	)
@@ -2124,6 +2129,7 @@ type ChatSummary struct {
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	Email       string    `json:"email"`
+	Phone       string    `json:"phone"`
 }
 
 func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]ChatSummary, error) {
@@ -2142,7 +2148,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			u.id AS partner_id,
 			u.first_name,
 			u.last_name,
-			u.email
+			u.email,
+			u.phone
 		FROM chats
 		JOIN users u
 			ON u.id = CASE
@@ -2179,6 +2186,7 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			&s.FirstName,
 			&s.LastName,
 			&s.Email,
+			&s.Phone,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
@@ -2348,4 +2356,12 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 
 	log.Println(results, "THE RESULTS")
 	return results, nil
+}
+
+func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
+	return nil
+
+}
+func (r *PostgresRepository) UploadShopBanner(ctx context.Context, img, userId string) error {
+	return nil
 }

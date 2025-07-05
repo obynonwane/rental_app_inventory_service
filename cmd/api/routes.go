@@ -30,6 +30,8 @@ func (app *Config) routes() http.Handler {
 	mux.Post("/api/v1/chat-list", app.GetChatList)
 	mux.Post("/api/v1/unread-chat", app.GetUnreadChat)
 	mux.Post("/api/v1/mark-chat-as-read", app.MarkChatAsRead)
+	mux.Post("/api/v1/profile-image", app.UploadProfileImage)
+	mux.Post("/api/v1/shop-banner", app.UploadBanner)
 
 	mux.Get("/api/v1/premium-partners", app.PremiumPartner)
 	// Add the Prometheus metrics endpoint to the router

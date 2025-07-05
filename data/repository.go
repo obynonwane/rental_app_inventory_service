@@ -37,4 +37,6 @@ type Repository interface {
 	GetUnreadChat(ctx context.Context, userID string) (int32, error)
 	MarkChatAsRead(ctx context.Context, userID, senderID string) error
 	GetPremiumPartners(ctx context.Context) ([]BusinessAnalytics, error)
+	UploadProfileImage(ctx context.Context, img, userId string) error
+	UploadShopBanner(ctx context.Context, img, userId string) error
 }

@@ -12,6 +12,7 @@ type User struct {
 	LastName    string      `json:"last_name,omitempty"`
 	Phone       string      `json:"phone"`
 	Password    string      `json:"-"`
+	ProfileImg  string      `json:"profile_img"`
 	Verified    bool        `json:"verified"`
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
@@ -247,8 +248,10 @@ type BusinessKyc struct {
 	PlanID string `json:"plan_id"`
 	Plan   *Plan  `json:"plan,omitempty"`
 
-	Verified   bool      `json:"verified"`
-	ActivePlan bool      `json:"active_plan"`
+	Verified   bool `json:"verified"`
+	ActivePlan bool `json:"active_plan"`
+
+	ShopBanner string    `json:"shop_banner"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	CreatedAt  time.Time `json:"created_at"`
 }

@@ -2129,6 +2129,7 @@ type ChatSummary struct {
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	Email       string    `json:"email"`
+	Phone       string    `json:"phone"`
 }
 
 func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]ChatSummary, error) {
@@ -2147,7 +2148,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			u.id AS partner_id,
 			u.first_name,
 			u.last_name,
-			u.email
+			u.email,
+			u.phone
 		FROM chats
 		JOIN users u
 			ON u.id = CASE
@@ -2184,6 +2186,7 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			&s.FirstName,
 			&s.LastName,
 			&s.Email,
+			&s.Phone,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)

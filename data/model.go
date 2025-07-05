@@ -356,6 +356,9 @@ type CreateInventoryParams struct {
 	Metadata        string
 	Negotiable      string
 	PrimaryImage    string
+	Condition       string
+	UsageGuide      string
+	Included        string
 }
 
 func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
@@ -392,6 +395,9 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 	negotiable := req.Negotiable
 	primaryImage := req.PrimaryImage
 	minimumPrice := req.MinimumPrice
+	usageGuide := req.UsageGuide
+	condition := req.Condition
+	included := req.Included
 
 	query := `INSERT INTO inventories (
 				name, 
@@ -421,10 +427,13 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 				negotiable,
 				primary_image,
 				minimum_price,
+				usage_guide,
+				condition,
+				included,
 
 				updated_at, 
 				created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW()) 
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, NOW(), NOW()) 
 			RETURNING 
 				id, 
 				name, 
@@ -453,6 +462,9 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 				negotiable,
 				primary_image,
 				minimum_price,
+				usage_guide,
+				condition,
+				included,
 
 				updated_at, 
 				created_at`
@@ -486,6 +498,9 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		negotiable,
 		primaryImage,
 		minimumPrice,
+		usageGuide,
+		condition,
+		included,
 	).Scan(
 		&inventory.ID,
 		&inventory.Name,
@@ -514,6 +529,9 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		&inventory.Negotiable,
 		&inventory.PrimaryImage,
 		&inventory.MinimumPrice,
+		&inventory.UsageGuide,
+		&inventory.Condition,
+		&inventory.Included,
 
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,

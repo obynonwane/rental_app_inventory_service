@@ -375,10 +375,13 @@ func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.Cr
 			Metadata:        req.Metadata,
 			Negotiable:      req.Negotiable,
 			PrimaryImage:    primageImageURL,
+			Included:        req.Included,
+			UsageGuide:      req.UsageGuide,
+			Condition:       req.Condition,
 		})
 
 		if err != nil {
-			log.Println(fmt.Errorf("error creating inventory for user %s", req.UserId))
+			log.Println(fmt.Errorf("error creating inventory for user %s - %s", req.UserId, err))
 			return
 		}
 	}()
@@ -916,7 +919,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				SubCategory:   &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
 				AverageRating: di.AverageRating,
 				TotalRatings:  di.TotalRatings,
-				UserVerified: di.UserVerified,
+				UserVerified:  di.UserVerified,
 			},
 		}, nil
 

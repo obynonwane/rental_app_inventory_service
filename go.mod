@@ -12,7 +12,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.2
-	github.com/obynonwane/rental-service-proto v0.0.0-20250703164210-b2dd21fa163b
+	github.com/obynonwane/rental-service-proto v0.0.0-20250705090237-9c1759fa110b
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/prometheus/client_golang v1.20.2
 	github.com/stretchr/testify v1.9.0

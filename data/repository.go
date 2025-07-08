@@ -44,4 +44,5 @@ type Repository interface {
 	DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error
 	GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error)
 	GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error)
+	GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error)
 }

@@ -400,7 +400,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 	errorChannel := make(chan error)
 
 	// create a context with a timeout for the asynchronous task
-	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
 	go func() {
@@ -437,6 +437,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 					SubcategorySlug: sub.SubCategorySlug,
 					CreatedAtHuman:  formatTimestamp(timestamppb.New(sub.CreatedAt)),
 					UpdatedAtHuman:  formatTimestamp(timestamppb.New(sub.UpdatedAt)),
+					InventoryCount:  &sub.InventoryCount,
 				})
 			}
 
@@ -449,6 +450,7 @@ func (i *InventoryServer) GetCategories(ctx context.Context, req *inventory.Empt
 				CreatedAtHuman: formatTimestamp(timestamppb.New(category.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(category.UpdatedAt)),
 				Subcategories:  subcategories,
+				InventoryCount: &category.InventoryCount,
 			}
 
 			allCategories = append(allCategories, singleCategory)

@@ -80,6 +80,7 @@ func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
 }
 
 func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, error) {
+
 	query := `
 		SELECT
 			c.id, c.name, c.description, c.icon_class, c.category_slug, c.created_at, c.updated_at,
@@ -163,6 +164,42 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 		return categories[i].Name < categories[j].Name
 	})
 
+	// 1.Loop through the response to count the inventories for each category and subcategory
+	for i, category := range categories {
+
+		var catCount int32
+
+		// execute query to count in inventories where category_id matches category.ID
+		catCountQuery := `SELECT COUNT(*) FROM inventories WHERE category_id = $1`
+
+		catRow := u.Conn.QueryRowContext(ctx, catCountQuery, category.ID)
+
+		if err := catRow.Scan(&catCount); err != nil {
+			log.Println("Error scanning row category count:", err)
+		}
+
+		categories[i].InventoryCount = catCount
+
+		subcategories := categories[i].Subcategories
+		// loop through the subcategories
+		for k, subcategory := range subcategories {
+
+			var subCatCount int32
+			// execute query to count in inventories where category_id matches category.ID
+			subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1`
+
+			subCatRow := u.Conn.QueryRowContext(ctx, subcatCountQuery, subcategory.ID)
+
+			if err := subCatRow.Scan(&subCatCount); err != nil {
+				log.Println("Error scanning row category count:", err)
+			}
+
+			subcategories[k].InventoryCount = subCatCount
+		}
+
+	}
+
+	log.Printf("%+v", categories[0])
 	return categories, nil
 
 }

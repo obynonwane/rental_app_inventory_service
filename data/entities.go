@@ -20,15 +20,16 @@ type User struct {
 }
 
 type Category struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	Description   string        `json:"description"`
-	IconClass     string        `json:"icon_class"`
-	CategorySlug  string        `json:"category_slug"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
-	Subcategories []Subcategory `json:"subcategories"` // One-to-many relationship
-	Inventories   []Inventory   `json:"inventories"`   // One-to-many relationship
+	ID             string        `json:"id"`
+	Name           string        `json:"name"`
+	Description    string        `json:"description"`
+	IconClass      string        `json:"icon_class"`
+	CategorySlug   string        `json:"category_slug"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+	Subcategories  []Subcategory `json:"subcategories"` // One-to-many relationship
+	Inventories    []Inventory   `json:"inventories"`   // One-to-many relationship
+	InventoryCount int32         `json:"inventory_count"`
 }
 
 type Subcategory struct {
@@ -41,6 +42,7 @@ type Subcategory struct {
 	CreatedAt       time.Time   `json:"created_at"`
 	UpdatedAt       time.Time   `json:"updated_at"`
 	Inventories     []Inventory `json:"inventories"` // One-to-many relationship
+	InventoryCount  int32       `json:"inventory_count"`
 }
 
 type Inventory struct {

@@ -2395,6 +2395,28 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 	return results, nil
 }
 
+type UserRatingAndCountReturn struct {
+	AverageRating float64 `json:"average_rating"`
+	Count         int32   `json:"count"`
+}
+
+func (r *PostgresRepository) UserRatingAndCount(ctx context.Context, userID string) (UserRatingAndCountReturn, error) {
+	var count int32
+	var averageRating float64
+
+	ratingQuery := `SELECT COALESCE(AVG(rating), 0) AS average_rating, COALESCE(COUNT(*), 0) FROM user_ratings where user_id = $1`
+	err := r.Conn.QueryRowContext(ctx, ratingQuery, userID).Scan(&averageRating, &count)
+	if err != nil {
+		return UserRatingAndCountReturn{}, nil
+	}
+
+	return UserRatingAndCountReturn{
+		AverageRating: averageRating,
+		Count:         count,
+	}, nil
+
+}
+
 func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
 	return nil
 

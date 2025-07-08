@@ -39,4 +39,5 @@ type Repository interface {
 	GetPremiumPartners(ctx context.Context) ([]BusinessAnalytics, error)
 	UploadProfileImage(ctx context.Context, img, userId string) error
 	UploadShopBanner(ctx context.Context, img, userId string) error
+	UserRatingAndCount(ctx context.Context, userID string) (UserRatingAndCountReturn, error)
 }

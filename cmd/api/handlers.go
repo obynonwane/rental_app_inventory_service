@@ -872,7 +872,12 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 			log.Fatal("error retrieving subcategory: %w", err)
 		}
 
-		log.Println("MINIMUM PRICE", di.MinimumPrice)
+		// get the user rating and count
+		userRatingCount, err := i.Models.UserRatingAndCount(timeoutCtx, "38a75f82-ef42-448f-85c4-e3645ca71b74")
+		if err != nil {
+			log.Fatal("error retrieving user rating: %w", err)
+		}
+
 		return &inventory.InventoryResponseDetail{
 			Inventory: &inventory.Inventory{
 
@@ -917,11 +922,13 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				CategorySlug:    di.CategorySlug,
 				SubcategorySlug: di.SubcategorySlug,
 
-				Category:      &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
-				SubCategory:   &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
-				AverageRating: di.AverageRating,
-				TotalRatings:  di.TotalRatings,
-				UserVerified:  di.UserVerified,
+				Category:          &inventory.CategoryResponse{Id: category.ID, Name: category.Name, Description: category.Description, IconClass: category.IconClass, CategorySlug: category.CategorySlug},
+				SubCategory:       &inventory.SubCategoryResponse{Id: subcategory.ID, Name: subcategory.Name, Description: subcategory.Description, IconClass: subcategory.IconClass, SubcategorySlug: subcategory.SubCategorySlug},
+				AverageRating:     di.AverageRating,
+				TotalRatings:      di.TotalRatings,
+				UserVerified:      di.UserVerified,
+				TotalUserRating:   &userRatingCount.Count,
+				AverageUserRating: &userRatingCount.AverageRating,
 			},
 		}, nil
 

@@ -1341,3 +1341,113 @@ func (s *InventoryServer) SearchInventory(
 
 	return resp, nil
 }
+
+type SavedInventoryPayload struct {
+	UserId      string `json:"user_id"`
+	InventoryId string `json:"inventory_id" binding:"required"`
+}
+
+func (app *Config) SaveInventory(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload SavedInventoryPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// declare context to timeouts
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Second) // Example timeout duration
+	defer cancel()
+
+	// get the inventory supplied
+	_, err = app.Repo.GetInventoryWithSuppliedID(timeoutCtx, requestPayload.InventoryId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			app.errorJSON(w, errors.New("no such inventory exist"), nil, http.StatusBadRequest)
+			return
+		}
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	// check if user has already saved the inventory
+	_, err = app.Repo.GetSavedInventoryByUserIDAndInventoryID(
+		timeoutCtx, requestPayload.UserId, requestPayload.InventoryId,
+	)
+
+	// check if error and error is no row
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Record does NOT exist — create it
+			err = app.Repo.SaveInventory(timeoutCtx, requestPayload.UserId, requestPayload.InventoryId)
+			if err != nil {
+				app.errorJSON(w, errors.New("failed to save inventory"), nil, http.StatusInternalServerError)
+				return
+			}
+
+			app.writeJSON(w, http.StatusCreated, jsonResponse{
+				Error:      false,
+				StatusCode: http.StatusCreated,
+				Message:    "inventory saved successfully",
+			})
+			return
+		}
+	}
+
+	// Record already exists — just acknowledge
+	app.writeJSON(w, http.StatusAccepted, jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "inventory already saved",
+	})
+
+}
+
+type DeleteSavedInventoryPayload struct {
+	ID          string `json:"id"`
+	UserId      string `json:"user_id"`
+	InventoryId string `json:"inventory_id" binding:"required"`
+}
+
+func (app *Config) DeleteSaveInventory(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload DeleteSavedInventoryPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+	_, err = app.Repo.GetInventoryByID(timeoutCtx, requestPayload.InventoryId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			app.errorJSON(w, errors.New("no record found"), nil, http.StatusBadRequest)
+			return
+		}
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	err = app.Repo.DeleteSaveInventory(timeoutCtx, requestPayload.ID, requestPayload.UserId, requestPayload.InventoryId)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "inventory deleted successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

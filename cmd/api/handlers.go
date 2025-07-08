@@ -1451,3 +1451,38 @@ func (app *Config) DeleteSaveInventory(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+type GetUserSavedInventoryReq struct {
+	UserId string `json:"user_id"`
+}
+
+func (app *Config) GetUserSavedInventory(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload GetUserSavedInventoryReq
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	data, err := app.Repo.GetUserSavedInventory(timeoutCtx, requestPayload.UserId)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "saved inventory retrieved successfully",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

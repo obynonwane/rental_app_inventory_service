@@ -6,6 +6,7 @@ toolchain go1.22.9
 
 require (
 	github.com/cloudinary/cloudinary-go v1.7.0
+	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/cors v1.2.1
 	github.com/jackc/pgconn v1.14.3

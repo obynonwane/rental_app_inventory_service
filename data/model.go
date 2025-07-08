@@ -2488,6 +2488,96 @@ func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId
 	return nil
 }
 
+func (r *PostgresRepository) GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error) {
+
+	log.Println("The UserID", userId)
+	query := `SELECT 
+					i.id, 
+					i.name, 
+					i.description, 
+					i.user_id, 
+					i.category_id, 
+					i.subcategory_id, 
+					i.promoted, 
+					i.deactivated, 
+					i.updated_at, 
+					i.created_at, 
+					i.country_id, 
+					i.state_id, 
+					i.lga_id, 
+					i.slug, 
+					i.ulid, 
+					i.offer_price, 
+					i.state_slug, 
+					i.country_slug, 
+					i.lga_slug, 
+					i.category_slug, 
+					i.subcategory_slug, 
+					i.product_purpose, 
+					i.quantity, 
+					i.is_available, 
+					i.rental_duration, 
+					i.security_deposit, 
+					i.minimum_price, 
+					i.metadata, 
+					i.negotiable, 
+					i.primary_image
+				FROM saved_inventories si
+				JOIN inventories i ON si.inventory_id = i.id
+				WHERE si.user_id = $1`
+
+	rows, err := r.Conn.QueryContext(ctx, query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var inventories []*Inventory
+
+	for rows.Next() {
+		var inv Inventory
+		err := rows.Scan(
+			&inv.ID,
+			&inv.Name,
+			&inv.Description,
+			&inv.UserId,
+			&inv.CategoryId,
+			&inv.SubcategoryId,
+			&inv.Promoted,
+			&inv.Deactivated,
+			&inv.UpdatedAt,
+			&inv.CreatedAt,
+			&inv.CategoryId,
+			&inv.StateId,
+			&inv.LgaId,
+			&inv.Slug,
+			&inv.Ulid,
+			&inv.OfferPrice,
+			&inv.StateSlug,
+			&inv.CountrySlug,
+			&inv.LgaSlug,
+			&inv.CategorySlug,
+			&inv.SubcategorySlug,
+			&inv.ProductPurpose,
+			&inv.Quantity,
+			&inv.IsAvailable,
+			&inv.RentalDuration,
+			&inv.SecurityDeposit,
+			&inv.MinimumPrice,
+			&inv.Metadata,
+			&inv.Negotiable,
+			&inv.PrimaryImage,
+		)
+		if err != nil {
+			log.Println("Error scanning inventory:", err)
+			continue
+		}
+		inventories = append(inventories, &inv)
+	}
+
+	return inventories, nil
+}
+
 func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
 	return nil
 

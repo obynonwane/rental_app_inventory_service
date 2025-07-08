@@ -266,3 +266,11 @@ type Plan struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+type SavedInventory struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	InventoryID string    `json:"inventory_id"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time `json:"created_at"`
+}

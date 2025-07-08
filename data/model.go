@@ -2417,6 +2417,77 @@ func (r *PostgresRepository) UserRatingAndCount(ctx context.Context, userID stri
 
 }
 
+func (r *PostgresRepository) GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error) {
+	query := `SELECT id, created_at, updated_at FROM inventories WHERE id = $1`
+
+	log.Println(inventoryId, "the inventory")
+
+	row := r.Conn.QueryRowContext(ctx, query, inventoryId)
+
+	var inv Inventory
+	err := row.Scan(&inv.ID, &inv.CreatedAt, &inv.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		log.Println("Error scanning row:", err)
+		return nil, err
+	}
+
+	log.Printf("Fetched inventory: %+v", inv)
+	return &inv, nil
+}
+
+func (u *PostgresRepository) GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error) {
+
+	query := `SELECT id, user_id, inventory_id, updated_at, created_at FROM saved_inventories WHERE user_id = $1 AND inventory_id = $2`
+	row := u.Conn.QueryRowContext(ctx, query, userId, inventoryId)
+
+	var savedInventory SavedInventory
+
+	err := row.Scan(
+		&savedInventory.ID,
+		&savedInventory.UserID,
+		&savedInventory.InventoryID,
+		&savedInventory.UpdatedAt, // Ensure the order matches the query
+		&savedInventory.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("no inventory found with ID %s", inventoryId)
+			return nil, err
+		}
+		return nil, fmt.Errorf("error retrieving lga by ID: %w", err)
+	}
+	return &savedInventory, nil
+}
+
+func (r *PostgresRepository) SaveInventory(ctx context.Context, userId, inventoryId string) error {
+	query := `INSERT INTO saved_inventories (user_id, inventory_id, updated_at, created_at) VALUES ($1, $2, NOW(), NOW())`
+	_, err := r.Conn.ExecContext(ctx, query, userId, inventoryId)
+	if err != nil {
+		log.Println("THE ERROR CREATING SAVED INVENTORY", err)
+		return fmt.Errorf("failed to save inventory: %v", err)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error {
+
+	query := `DELETE FROM saved_inventories WHERE id = $1 AND user_id = $2 AND inventory_id= $3`
+	res, err := r.Conn.ExecContext(ctx, query, id, userId, inventoryId)
+	if err != nil {
+		log.Println("Delete failed:", err)
+		return fmt.Errorf("failed to deleted inventory: %v", err)
+	}
+
+	count, _ := res.RowsAffected()
+	log.Printf("Deleted %d saved_inventory record(s)", count)
+
+	return nil
+}
+
 func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
 	return nil
 

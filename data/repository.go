@@ -40,4 +40,8 @@ type Repository interface {
 	UploadProfileImage(ctx context.Context, img, userId string) error
 	UploadShopBanner(ctx context.Context, img, userId string) error
 	UserRatingAndCount(ctx context.Context, userID string) (UserRatingAndCountReturn, error)
+	SaveInventory(ctx context.Context, userId, inventoryId string) error
+	DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error
+	GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error)
+	GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error)
 }

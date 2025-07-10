@@ -17,6 +17,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/obynonwane/rental-service-proto/inventory"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // db timeout period
@@ -813,24 +814,24 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	case inventory_id != "" && slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
-		         FROM inventories 
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
+		         tags, condition, usage_guide, included FROM inventories 
 		         WHERE id = $1 OR slug = $2`
 		args = append(args, inventory_id, slug_ulid)
 
 	case inventory_id != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
-		         FROM inventories 
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
+		         tags, condition, usage_guide, included FROM inventories 
 		         WHERE id = $1`
 		args = append(args, inventory_id)
 
 	case slug_ulid != "":
 		query = `SELECT id, name, description, user_id, category_id, subcategory_id, promoted, deactivated, updated_at, created_at,
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
-				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
-		         FROM inventories 
+				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
+		         tags, condition, usage_guide, included FROM inventories 
 		         WHERE slug = $1`
 		args = append(args, slug_ulid)
 
@@ -844,6 +845,10 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 	var (
 		createdAt, updatedAt time.Time
 		primageImage         sql.NullString
+		userTags             sql.NullString
+		itemCondition        sql.NullString
+		itemUsageGuide       sql.NullString
+		itemIncluded         sql.NullString
 	)
 
 	err := row.Scan(
@@ -879,6 +884,11 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 		&inventory.Metadata,
 		&inventory.Negotiable,
 		&primageImage,
+
+		&userTags,
+		&itemCondition,
+		&itemUsageGuide,
+		&itemIncluded,
 	)
 
 	if err != nil {
@@ -890,6 +900,29 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	inventory.CreatedAt = createdAt
 	inventory.UpdatedAt = updatedAt
+
+	if userTags.Valid {
+		inventory.Tags = wrapperspb.String(userTags.String)
+	} else {
+		inventory.Tags = &wrapperspb.StringValue{}
+	}
+
+	if itemCondition.Valid {
+		inventory.Condition = wrapperspb.String(itemCondition.String)
+	} else {
+		inventory.Condition = &wrapperspb.StringValue{}
+	}
+
+	if itemUsageGuide.Valid {
+		inventory.UsageGuide = wrapperspb.String(itemUsageGuide.String)
+	} else {
+		inventory.UsageGuide = &wrapperspb.StringValue{}
+	}
+	if itemIncluded.Valid {
+		inventory.Included = wrapperspb.String(itemIncluded.String)
+	} else {
+		inventory.Included = &wrapperspb.StringValue{}
+	}
 
 	if primageImage.Valid {
 		inventory.PrimaryImage = primageImage.String

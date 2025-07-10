@@ -2,6 +2,8 @@ package data
 
 import (
 	"time"
+
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // User is the structure which holds one user from the database.
@@ -69,19 +71,19 @@ type Inventory struct {
 	CategorySlug    string `json:"category_slug"`
 	SubcategorySlug string `json:"subcategory_slug"`
 
-	ProductPurpose  string  `json:"product_purpose"`  // e.g., "sale" or "rental"
-	Quantity        float64 `json:"quantity"`         // default to 1
-	IsAvailable     string  `json:"is_available"`     // e.g., "yes" or "no"
-	RentalDuration  string  `json:"rental_duration"`  // e.g., "hourly", "daily"
-	SecurityDeposit float64 `json:"security_deposit"` // default to 0
-	Tags            string  `json:"tags"`             // comma- or space-separated
-	Metadata        string  `json:"metadata"`         // optional JSON string
-	Negotiable      string  `json:"negotiable"`       // e.g., "yes" or "no"
-	PrimaryImage    string  `json:"primary_image"`
-	MinimumPrice    float64 `json:"minimum_price"`
-	UsageGuide      string  `json:"usage_guide"`
-	Condition       string  `json:"condition"`
-	Included        string  `json:"included"`
+	ProductPurpose  string                  `json:"product_purpose"`  // e.g., "sale" or "rental"
+	Quantity        float64                 `json:"quantity"`         // default to 1
+	IsAvailable     string                  `json:"is_available"`     // e.g., "yes" or "no"
+	RentalDuration  string                  `json:"rental_duration"`  // e.g., "hourly", "daily"
+	SecurityDeposit float64                 `json:"security_deposit"` // default to 0
+	Tags            *wrapperspb.StringValue `json:"tags"`             // comma- or space-separated
+	Metadata        string                  `json:"metadata"`         // optional JSON string
+	Negotiable      string                  `json:"negotiable"`       // e.g., "yes" or "no"
+	PrimaryImage    string                  `json:"primary_image"`
+	MinimumPrice    float64                 `json:"minimum_price"`
+	UsageGuide      *wrapperspb.StringValue `json:"usage_guide"`
+	Condition       *wrapperspb.StringValue `json:"condition"`
+	Included        *wrapperspb.StringValue `json:"included"`
 
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user"`

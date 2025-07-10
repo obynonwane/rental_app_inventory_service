@@ -120,6 +120,12 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/obynonwane/rental-service-proto v0.0.0-20250708093644-4c930a3350b9 h1:czYG2U9d9lEf3s7IB0Mx4NpSS39g6DhMt3Aab9Je1Yc=
 github.com/obynonwane/rental-service-proto v0.0.0-20250708093644-4c930a3350b9/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710193957-e765380b35b7 h1:wKid0upvS2NH72VQrdXJ6JXNJFTP5eCsiXHh8lIQQjc=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710193957-e765380b35b7/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710195950-9cbf16d61a14 h1:XSp8/tlSWs1OXuSsUgt0Ss4Ox54kJ6ZI9PRG2acMM5A=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710195950-9cbf16d61a14/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710203754-c24d4930ccb0 h1:wYwjt6CBhsGaKLglvPiZDZrlRvEAPe3NIUkgcODcDOc=
+github.com/obynonwane/rental-service-proto v0.0.0-20250710203754-c24d4930ccb0/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/oklog/ulid/v2 v2.1.1 h1:suPZ4ARWLOJLegGFiZZ1dFAkqzhMjL3J1TzI+5wHz8s=
 github.com/oklog/ulid/v2 v2.1.1/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
 github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=

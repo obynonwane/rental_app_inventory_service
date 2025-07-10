@@ -902,7 +902,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				IsAvailable:     di.IsAvailable,
 				RentalDuration:  di.RentalDuration,
 				SecurityDeposit: di.SecurityDeposit,
-				Metadata:        di.Metadata,
+				Metadata:        &di.Metadata,
 				Negotiable:      di.Negotiable,
 				PrimaryImage:    di.PrimaryImage,
 				MinimumPrice:    di.MinimumPrice,
@@ -929,6 +929,10 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				UserVerified:      di.UserVerified,
 				TotalUserRating:   &userRatingCount.Count,
 				AverageUserRating: &userRatingCount.AverageRating,
+				Tags:              di.Tags,
+				Condition:         &di.Condition.Value,
+				UsageGuide:        &di.UsageGuide.Value,
+				Included:          &di.Included.Value,
 			},
 		}, nil
 

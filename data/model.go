@@ -2450,6 +2450,24 @@ func (r *PostgresRepository) UserRatingAndCount(ctx context.Context, userID stri
 
 }
 
+type TotalUserListingReturn struct {
+	Count int32 `json:"count"`
+}
+
+func (r *PostgresRepository) TotalUserInventoryListing(ctx context.Context, userID string) (TotalUserListingReturn, error) {
+	var count int32
+
+	countQuery := `SELECT  COALESCE(COUNT(*), 0) FROM inventories where user_id = $1`
+	err := r.Conn.QueryRowContext(ctx, countQuery, userID).Scan(&count)
+	if err != nil {
+		return TotalUserListingReturn{}, nil
+	}
+
+	return TotalUserListingReturn{
+		Count: count,
+	}, nil
+}
+
 func (r *PostgresRepository) GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error) {
 	query := `SELECT id, created_at, updated_at FROM inventories WHERE id = $1`
 

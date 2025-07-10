@@ -873,11 +873,19 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 		}
 
 		// get the user rating and count
-		userRatingCount, err := i.Models.UserRatingAndCount(timeoutCtx, "38a75f82-ef42-448f-85c4-e3645ca71b74")
+		userRatingCount, err := i.Models.UserRatingAndCount(timeoutCtx, user.ID)
 		if err != nil {
 			log.Fatal("error retrieving user rating: %w", err)
 		}
 
+		// get the total user listing
+		totalListingCount, err := i.Models.TotalUserInventoryListing(timeoutCtx, user.ID)
+		if err != nil {
+			log.Fatal("error retrieving total listing  for user: %w", err)
+		}
+
+		log.Println(totalListingCount.Count, "Total Listing")
+		log.Println(user.ID, "USER_ID")
 		return &inventory.InventoryResponseDetail{
 			Inventory: &inventory.Inventory{
 
@@ -933,6 +941,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				Condition:         &di.Condition.Value,
 				UsageGuide:        &di.UsageGuide.Value,
 				Included:          &di.Included.Value,
+				TotalUserListing:  totalListingCount.Count,
 			},
 		}, nil
 

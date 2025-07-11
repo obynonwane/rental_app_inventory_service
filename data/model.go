@@ -1080,11 +1080,12 @@ func (u *PostgresRepository) CreateUserRating(
 
 func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
 
-	query := `SELECT id, email, first_name, last_name, phone, verified, updated_at, created_at FROM users WHERE id = $1`
+	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at FROM users WHERE id = $1`
 
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
 	var user User
+	var userImg sql.NullString
 
 	err := row.Scan(
 		&user.ID,
@@ -1093,6 +1094,7 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 		&user.LastName,
 		&user.Phone,
 		&user.Verified,
+		&userImg,
 		&user.UpdatedAt,
 		&user.CreatedAt,
 	)
@@ -1104,6 +1106,11 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
 	}
 
+	if userImg.Valid {
+		user.ProfileImg = wrapperspb.String(userImg.String)
+	} else {
+		user.ProfileImg = &wrapperspb.StringValue{}
+	}
 	log.Println(user, "the user is here")
 
 	return &user, nil
@@ -2186,20 +2193,21 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 // }
 
 type ChatSummary struct {
-	ID          string    `json:"id"`
-	Content     string    `json:"last_message"`
-	SenderID    string    `json:"sender_id"`
-	ReceiverID  string    `json:"receiver_id"`
-	SentAt      int64     `json:"sent_at"`
-	Type        string    `json:"type"`
-	ContentType string    `json:"content_type"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	PartnerID   string    `json:"partner_id"`
-	FirstName   string    `json:"first_name"`
-	LastName    string    `json:"last_name"`
-	Email       string    `json:"email"`
-	Phone       string    `json:"phone"`
+	ID          string                  `json:"id"`
+	Content     string                  `json:"last_message"`
+	SenderID    string                  `json:"sender_id"`
+	ReceiverID  string                  `json:"receiver_id"`
+	SentAt      int64                   `json:"sent_at"`
+	Type        string                  `json:"type"`
+	ContentType string                  `json:"content_type"`
+	CreatedAt   time.Time               `json:"created_at"`
+	UpdatedAt   time.Time               `json:"updated_at"`
+	PartnerID   string                  `json:"partner_id"`
+	FirstName   string                  `json:"first_name"`
+	LastName    string                  `json:"last_name"`
+	Email       string                  `json:"email"`
+	Phone       string                  `json:"phone"`
+	ProfileImg  *wrapperspb.StringValue `json:"profile_img"`
 }
 
 func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]ChatSummary, error) {
@@ -2219,7 +2227,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			u.first_name,
 			u.last_name,
 			u.email,
-			u.phone
+			u.phone,
+			u.profile_img
 		FROM chats
 		JOIN users u
 			ON u.id = CASE
@@ -2239,6 +2248,7 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 	defer rows.Close()
 
 	var summaries []ChatSummary
+	var userImg sql.NullString
 
 	for rows.Next() {
 		var s ChatSummary
@@ -2257,9 +2267,16 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 			&s.LastName,
 			&s.Email,
 			&s.Phone,
+			&userImg,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
+		}
+
+		if userImg.Valid {
+			s.ProfileImg = wrapperspb.String(userImg.String)
+		} else {
+			s.ProfileImg = &wrapperspb.StringValue{}
 		}
 		summaries = append(summaries, s)
 	}

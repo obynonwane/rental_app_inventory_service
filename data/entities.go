@@ -8,17 +8,17 @@ import (
 
 // User is the structure which holds one user from the database.
 type User struct {
-	ID          string      `json:"id"`
-	Email       string      `json:"email"`
-	FirstName   string      `json:"first_name,omitempty"`
-	LastName    string      `json:"last_name,omitempty"`
-	Phone       string      `json:"phone"`
-	Password    string      `json:"-"`
-	ProfileImg  string      `json:"profile_img"`
-	Verified    bool        `json:"verified"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	Inventories []Inventory `json:"inventories,omitempty"` // One-to-many relationship
+	ID          string                  `json:"id"`
+	Email       string                  `json:"email"`
+	FirstName   string                  `json:"first_name,omitempty"`
+	LastName    string                  `json:"last_name,omitempty"`
+	Phone       string                  `json:"phone"`
+	Password    string                  `json:"-"`
+	ProfileImg  *wrapperspb.StringValue `json:"profile_img"`
+	Verified    bool                    `json:"verified"`
+	CreatedAt   time.Time               `json:"created_at"`
+	UpdatedAt   time.Time               `json:"updated_at"`
+	Inventories []Inventory             `json:"inventories,omitempty"` // One-to-many relationship
 }
 
 type Category struct {

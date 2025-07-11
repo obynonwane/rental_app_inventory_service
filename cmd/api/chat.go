@@ -227,6 +227,24 @@ type ChatListRequest struct {
 	UserID string `json:"user_id"`
 }
 
+type ChatSummaryDTO struct {
+	ID          string    `json:"id"`
+	Content     string    `json:"last_message"`
+	SenderID    string    `json:"sender_id"`
+	ReceiverID  string    `json:"receiver_id"`
+	SentAt      int64     `json:"sent_at"`
+	Type        string    `json:"type"`
+	ContentType string    `json:"content_type"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	PartnerID   string    `json:"partner_id"`
+	FirstName   string    `json:"first_name"`
+	LastName    string    `json:"last_name"`
+	Email       string    `json:"email"`
+	Phone       string    `json:"phone"`
+	ProfileImg  *string   `json:"profile_img"` // clean JSON output
+}
+
 func (app *Config) GetChatList(w http.ResponseWriter, r *http.Request) {
 
 	//extract the request body
@@ -257,12 +275,41 @@ func (app *Config) GetChatList(w http.ResponseWriter, r *http.Request) {
 		chat = []data.ChatSummary{}
 	}
 
+	var dtoList []ChatSummaryDTO
+	for _, c := range chat {
+		var img *string
+		if c.ProfileImg != nil && c.ProfileImg.Value != "" {
+			v := c.ProfileImg.Value
+			img = &v
+		}
+
+		dto := ChatSummaryDTO{
+			ID:          c.ID,
+			Content:     c.Content,
+			SenderID:    c.SenderID,
+			ReceiverID:  c.ReceiverID,
+			SentAt:      c.SentAt,
+			Type:        c.Type,
+			ContentType: c.ContentType,
+			CreatedAt:   c.CreatedAt,
+			UpdatedAt:   c.UpdatedAt,
+			PartnerID:   c.PartnerID,
+			FirstName:   c.FirstName,
+			LastName:    c.LastName,
+			Email:       c.Email,
+			Phone:       c.Phone,
+			ProfileImg:  img,
+		}
+
+		dtoList = append(dtoList, dto)
+	}
+
 	// send sms & email notification to both owner and buyer
 	payload := jsonResponse{
 		Error:      false,
 		StatusCode: http.StatusAccepted,
 		Message:    "chat list retrieved successfully",
-		Data:       chat,
+		Data:       dtoList,
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

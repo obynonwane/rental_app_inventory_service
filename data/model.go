@@ -1464,6 +1464,8 @@ type SearchPayload struct {
 	LgaSlug         string `json:"lga_slug"`
 	CategorySlug    string `json:"category_slug"`
 	SubcategorySlug string `json:"subcategory_slug"`
+	UserID          string `json:"user_id"`
+	ProductPurpose  string `json:"product_purpose"`
 }
 
 type GetCategoryByIDPayload struct {
@@ -1475,6 +1477,9 @@ func (r *PostgresRepository) SearchInventory(
 	ctx context.Context,
 	p *SearchPayload,
 ) (*InventoryCollection, error) {
+
+
+	
 
 	log.Println(p, "the payload")
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
@@ -1567,6 +1572,16 @@ func (r *PostgresRepository) SearchInventory(
 	if p.SubcategorySlug != "" {
 		conditions = append(conditions, fmt.Sprintf("l.subcategory_slug = $%d", argIdx))
 		args = append(args, p.SubcategorySlug)
+		argIdx++
+	}
+	if p.UserID != "" {
+		conditions = append(conditions, fmt.Sprintf("l.user_id = $%d", argIdx))
+		args = append(args, p.UserID)
+		argIdx++
+	}
+	if p.ProductPurpose != "" {
+		conditions = append(conditions, fmt.Sprintf("l.product_purpose = $%d", argIdx))
+		args = append(args, p.ProductPurpose)
 		argIdx++
 	}
 

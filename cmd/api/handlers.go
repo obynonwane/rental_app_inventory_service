@@ -1277,6 +1277,8 @@ func (s *InventoryServer) SearchInventory(
 		LgaSlug:         req.LgaSlug,
 		CategorySlug:    req.CategorySlug,
 		SubcategorySlug: req.SubcategorySlug,
+		UserID:          req.UserId,
+		ProductPurpose:  req.ProductPurpose,
 	}
 
 	// 3) Call your repo

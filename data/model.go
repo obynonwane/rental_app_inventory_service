@@ -2630,9 +2630,18 @@ func (r *PostgresRepository) GetUserSavedInventory(ctx context.Context, userId s
 }
 
 func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
-	return nil
-
+	_, err := r.Conn.ExecContext(ctx, `
+		UPDATE users
+		SET profile_img = $1
+		WHERE id = $2 
+	`, img, userId)
+	return err
 }
 func (r *PostgresRepository) UploadShopBanner(ctx context.Context, img, userId string) error {
-	return nil
+	_, err := r.Conn.ExecContext(ctx, `
+		UPDATE business_kycs
+		SET shop_banner = $1
+		WHERE user_id = $2 
+	`, img, userId)
+	return err
 }

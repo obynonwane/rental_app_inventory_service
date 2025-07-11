@@ -162,17 +162,17 @@ func (app *Config) UploadBanner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(uploadResult.SecureURL)
 	imageUrl := uploadResult.SecureURL
 
-	err = app.Repo.UploadProfileImage(timeoutCtx, imageUrl, userID)
+	err = app.Repo.UploadShopBanner(timeoutCtx, imageUrl, userID)
 	if err != nil {
 		app.errorJSON(w, err, nil, http.StatusInternalServerError)
 		return
 	}
+
 	app.writeJSON(w, http.StatusAccepted, jsonResponse{
 		Error:      false,
 		StatusCode: http.StatusAccepted,
-		Message:    "profile image uploaded successfully",
+		Message:    "shop  banner uploaded successfully",
 	})
 }

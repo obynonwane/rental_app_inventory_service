@@ -922,7 +922,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				LgaId:     di.LgaId,
 				Lga:       &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
 				Images:    mapToProtoImages(di.Images),
-				User:      &inventory.User{Id: user.ID, FirstName: user.FirstName, LastName: user.LastName, Phone: user.Phone, Email: user.Email, Verified: user.Verified, CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)), UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt))},
+				User:      &inventory.User{Id: user.ID, FirstName: user.FirstName, LastName: user.LastName, Phone: user.Phone, Email: user.Email, Verified: user.Verified, ProfileImg: &user.ProfileImg.Value, CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)), UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt))},
 
 				StateSlug:       di.StateSlug,
 				CountrySlug:     di.CountrySlug,

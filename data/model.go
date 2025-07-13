@@ -1478,9 +1478,6 @@ func (r *PostgresRepository) SearchInventory(
 	p *SearchPayload,
 ) (*InventoryCollection, error) {
 
-
-	
-
 	log.Println(p, "the payload")
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
@@ -2323,10 +2320,10 @@ func (repo *PostgresRepository) MarkChatAsRead(ctx context.Context, userID, send
 type BusinessAnalytics struct {
 	BusinessKycID      string  `json:"business_kyc_id"`
 	DisplayName        string  `json:"display_name"`
-	Description        string  `json:"description"`
+	Description        *string `json:"description"`
 	Address            string  `json:"address"`
 	CacNumber          *string `json:"cac_number,omitempty"`
-	KeyBonus           string  `json:"key_bonus"`
+	KeyBonus           *string `json:"key_bonus"`
 	BusinessRegistered string  `json:"business_registered"`
 	Verified           bool    `json:"verified"`
 	ActivePlan         bool    `json:"active_plan"`
@@ -2348,12 +2345,94 @@ type BusinessAnalytics struct {
 	PlanName         string  `json:"plan_name"`
 	TotalInventories int64   `json:"total_inventories"`
 	AverageRating    float64 `json:"average_rating"`
+	ShopBanner       *string `json:"shop_banner"`
+	Industries       *string `json:"industries"`
+	Subdomain        *string `json:"subdomain"`
 }
 
-func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]BusinessAnalytics, error) {
-	log.Println("GOT TO THE MODEL")
+type SearchPremiumPartnerPayload struct {
+	Text     string `json:"text"`
+	Industry string `json:"industry"`
+	Limit    string `json:"limit"`
+	Offset   string `json:"offset"`
+}
 
-	query := `
+type BusinessCollection struct {
+	Data       []BusinessAnalytics
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (r *PostgresRepository) GetPremiumPartners(ctx context.Context, p SearchPremiumPartnerPayload) (*BusinessCollection, error) {
+
+	limit := 20
+	offset := 0
+	var err error
+	if p.Limit != "" {
+		limit, err = strconv.Atoi(p.Limit)
+		if err != nil {
+			return nil, fmt.Errorf("invalid limit: %w", err)
+		}
+	}
+	if p.Offset != "" {
+		offset, err = strconv.Atoi(p.Offset)
+		if err != nil {
+			return nil, fmt.Errorf("invalid offset: %w", err)
+		}
+	}
+
+	// Build dynamic WHERE clause
+	var (
+		conditions []string
+		args       []interface{}
+		argIdx     = 1
+	)
+
+	conditions = []string{
+		"bk.active_plan = true",
+	}
+
+	if p.Text != "" {
+		conditions = append(conditions, fmt.Sprintf(`
+			(
+				to_tsvector('english',
+				coalesce(bk.display_name, '') || ' ' || coalesce(bk.industries, '')
+				) @@ websearch_to_tsquery('english', $%d)
+				OR bk.display_name ILIKE '%%' || $%d || '%%'
+				OR bk.industries   ILIKE '%%' || $%d || '%%'
+			)
+			`, argIdx, argIdx, argIdx))
+
+		args = append(args, p.Text)
+		argIdx++
+	}
+
+	if p.Industry != "" {
+		conditions = append(conditions, fmt.Sprintf(`
+        (
+            to_tsvector('english', coalesce(bk.industries, '')) @@ websearch_to_tsquery('english', $%d)
+            OR bk.industries ILIKE '%%' || $%d || '%%'
+        )
+    `, argIdx, argIdx))
+
+		args = append(args, p.Industry)
+		argIdx++
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Count total results
+	var total int32
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM business_kycs bk JOIN plans p ON bk.plan_id = p.id %s`, whereClause)
+	if err := r.Conn.QueryRowContext(ctx, countSQL, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("count business_kycs: %w", err)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
 			bk.id AS business_kyc_id,
 			bk.display_name,
@@ -2364,6 +2443,10 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 			bk.business_registered,
 			bk.verified,
 			bk.active_plan,
+
+			bk.shop_banner,
+			bk.industries,
+			bk.subdomain,
 
 			bk.country_id,
 			co.name AS country_name,  
@@ -2396,9 +2479,7 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 			states st ON st.id = bk.state_id
 		LEFT JOIN
 			lgas lg ON lg.id = bk.lga_id
-		WHERE
-			LOWER(p.name) != 'free'
-			AND bk.active_plan = true
+		%s	
 		GROUP BY
 			bk.id, bk.display_name, bk.description, bk.address, bk.cac_number, bk.key_bonus,
 			bk.business_registered, bk.verified, bk.active_plan,
@@ -2406,10 +2487,14 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 			bk.state_id, st.name,
 			bk.lga_id, lg.name,
 			u.id, u.first_name, u.last_name, u.email,
-			p.name;
-	`
+			p.name
+		ORDER BY (LOWER(p.name) = 'free') ASC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argIdx, argIdx+1)
 
-	rows, err := r.Conn.QueryContext(ctx, query)
+	args = append(args, limit, offset)
+
+	rows, err := r.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
@@ -2418,17 +2503,30 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 	var results []BusinessAnalytics
 
 	for rows.Next() {
-		var ba BusinessAnalytics
+
+		var (
+			ba BusinessAnalytics
+
+			shopBanner      sql.NullString
+			shopIndustry    sql.NullString
+			shopDomain      sql.NullString
+			shopDescription sql.NullString
+			shopBonus       sql.NullString
+		)
 		err := rows.Scan(
 			&ba.BusinessKycID,
 			&ba.DisplayName,
-			&ba.Description,
+			&shopDescription,
 			&ba.Address,
 			&ba.CacNumber,
-			&ba.KeyBonus,
+			&shopBonus,
 			&ba.BusinessRegistered,
 			&ba.Verified,
 			&ba.ActivePlan,
+
+			&shopBanner,
+			&shopIndustry,
+			&shopDomain,
 
 			&ba.CountryID,
 			&ba.CountryName,
@@ -2449,6 +2547,36 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 		if err != nil {
 			return nil, fmt.Errorf("row scan failed: %w", err)
 		}
+
+		if shopBanner.Valid {
+			ba.ShopBanner = &shopBanner.String
+		} else {
+			ba.ShopBanner = nil
+		}
+
+		if shopIndustry.Valid {
+			ba.Industries = &shopIndustry.String
+		} else {
+			ba.Industries = nil
+		}
+		if shopDomain.Valid {
+			ba.Subdomain = &shopDomain.String
+		} else {
+			ba.Subdomain = nil
+		}
+
+		if shopDescription.Valid {
+			ba.Description = &shopDescription.String
+		} else {
+			ba.Description = nil
+		}
+
+		if shopBonus.Valid {
+			ba.KeyBonus = &shopBonus.String
+		} else {
+			ba.KeyBonus = nil
+		}
+
 		results = append(results, ba)
 	}
 
@@ -2457,7 +2585,15 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context) ([]Business
 	}
 
 	log.Println(results, "THE RESULTS")
-	return results, nil
+	// return results, nil
+
+	// Return paginated result
+	return &BusinessCollection{
+		Data:       results,
+		TotalCount: total,
+		Offset:     int32(offset),
+		Limit:      int32(limit),
+	}, nil
 }
 
 type UserRatingAndCountReturn struct {

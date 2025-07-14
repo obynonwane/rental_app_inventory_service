@@ -564,6 +564,7 @@ func (i *InventoryServer) GetCategorySubcategories(ctx context.Context, req *inv
 				SubcategorySlug: subCategory.SubCategorySlug,
 				CreatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.CreatedAt)),
 				UpdatedAtHuman:  formatTimestamp(timestamppb.New(subCategory.UpdatedAt)),
+				InventoryCount:  &subCategory.InventoryCount,
 			}
 
 			allSubCategories = append(allSubCategories, singleSubCategory)

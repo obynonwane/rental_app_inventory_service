@@ -277,6 +277,21 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 
 	}
 
+	for k, subcategory := range subCategories {
+
+		var subCatCount int32
+		// execute query to count in inventories where category_id matches category.ID
+		subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1`
+
+		subCatRow := u.Conn.QueryRowContext(ctx, subcatCountQuery, subcategory.ID)
+
+		if err := subCatRow.Scan(&subCatCount); err != nil {
+			log.Println("Error scanning row category count:", err)
+		}
+
+		subCategories[k].InventoryCount = subCatCount
+	}
+
 	return subCategories, nil
 }
 

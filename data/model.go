@@ -2611,6 +2611,47 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context, p SearchPre
 	}, nil
 }
 
+type PremiumExtrasPayload struct {
+	ActiveStores   int64 `json:"active_stores"`
+	AvailableItems int64 `json:"available_items"`
+	VerifiedStores int64 `json:"verified_stores"`
+}
+
+func (u *PostgresRepository) GetPremiumUsersExtras(ctx context.Context) (PremiumExtrasPayload, error) {
+
+	var invCatCount int64
+	var storeCount int64
+	var vStoreCount int64
+	// execute query to count in inventories where category_id matches category.ID
+	invQuery := `SELECT COUNT(*) FROM inventories`
+	invRow := u.Conn.QueryRowContext(ctx, invQuery)
+	if err := invRow.Scan(&invCatCount); err != nil {
+		log.Println("Error scanning row inventory count:", err)
+		return PremiumExtrasPayload{}, err
+	}
+
+	storeQuery := `SELECT COUNT(*) FROM business_kycs`
+	storeRow := u.Conn.QueryRowContext(ctx, storeQuery)
+	if err := storeRow.Scan(&storeCount); err != nil {
+		log.Println("Error scanning row business kycs count:", err)
+		return PremiumExtrasPayload{}, err
+	}
+
+	vstoreQuery := `SELECT COUNT(*) FROM business_kycs where verified = true`
+	vstoreRow := u.Conn.QueryRowContext(ctx, vstoreQuery)
+	if err := vstoreRow.Scan(&vStoreCount); err != nil {
+		log.Println("Error scanning row category count:", err)
+
+		return PremiumExtrasPayload{}, err
+	}
+	//
+	return PremiumExtrasPayload{
+		ActiveStores:   storeCount,
+		AvailableItems: invCatCount,
+		VerifiedStores: vStoreCount,
+	}, nil
+}
+
 type UserRatingAndCountReturn struct {
 	AverageRating float64 `json:"average_rating"`
 	Count         int32   `json:"count"`

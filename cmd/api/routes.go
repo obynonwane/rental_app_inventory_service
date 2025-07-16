@@ -34,6 +34,7 @@ func (app *Config) routes() http.Handler {
 	mux.Post("/api/v1/shop-banner", app.UploadBanner)
 	mux.Post("/api/v1/save-inventory", app.SaveInventory)
 	mux.Post("/api/v1/delete-inventory", app.DeleteSaveInventory)
+	mux.Post("/api/v1/delete-chat", app.DeleteChat)
 	mux.Post("/api/v1/user-saved-inventory", app.GetUserSavedInventory)
 
 	mux.Post("/api/v1/premium-partners", app.PremiumPartner)

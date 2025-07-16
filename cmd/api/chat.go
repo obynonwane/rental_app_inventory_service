@@ -397,3 +397,39 @@ func (app *Config) MarkChatAsRead(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+type DeleteChatPayload struct {
+	ID     string `json:"id" binding:"required"`
+	UserId string `json:"user_id" binding:"required"`
+}
+
+func (app *Config) DeleteChat(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload DeleteChatPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	err = app.Repo.DeleteChat(timeoutCtx, requestPayload.ID, requestPayload.UserId)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "chat deleted successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

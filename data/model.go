@@ -2136,12 +2136,26 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 
 func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
 	query := `
-		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, is_read, reply_to_id, created_at, updated_at
-		FROM chats
-		WHERE (sender_id = $1 AND receiver_id = $2)
-		   OR (sender_id = $2 AND receiver_id = $1)
-		ORDER BY sent_at ASC
-	`
+			SELECT
+				id,
+				content,
+				sender_id,
+				receiver_id,
+				sent_at,
+				type,
+				content_type,
+				is_read,
+				reply_to_id,
+				created_at,
+				updated_at
+			FROM chats
+			WHERE (
+				(sender_id   = $1 AND receiver_id = $2)
+			OR (sender_id   = $2 AND receiver_id = $1)
+			)
+				AND deleted_at IS NULL
+			ORDER BY sent_at ASC;
+		`
 
 	rows, err := c.Conn.QueryContext(ctx, query, userA, userB)
 	if err != nil {
@@ -2867,5 +2881,14 @@ func (r *PostgresRepository) UploadShopBanner(ctx context.Context, img, userId s
 		SET shop_banner = $1
 		WHERE user_id = $2 
 	`, img, userId)
+	return err
+}
+
+func (r *PostgresRepository) DeleteChat(ctx context.Context, id, userId string) error {
+	_, err := r.Conn.ExecContext(ctx, `
+		UPDATE chats
+		SET deleted_at = NOW()
+		WHERE id = $1 AND sender_id = $2 
+	`, id, userId)
 	return err
 }

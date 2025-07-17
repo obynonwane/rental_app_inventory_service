@@ -2064,13 +2064,16 @@ type Message struct {
 	SentAt      int64   `json:"sent_at"`
 	Type        string  `json:"type,omitempty"`         // "text", "image", "file"
 	ContentType string  `json:"content_type,omitempty"` // e.g. "image/png", "application/pdf"
+	MessageID   string  `json:"message_id"`
 }
 
 func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat, error) {
 	log.Println("GOT TO REPO", p)
+	log.Println("INSERTED ID", p.MessageID)
 
 	query := `INSERT INTO chats
 		(
+			id,
 			content,
 			sender_id, 
 			receiver_id, 
@@ -2081,7 +2084,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 			created_at, 
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) 
 		RETURNING 
 			id,  
 			content,
@@ -2106,6 +2109,7 @@ func (c *PostgresRepository) SubmitChat(ctx context.Context, p *Message) (*Chat,
 	err := c.Conn.QueryRowContext(
 		ctx,
 		query,
+		p.MessageID,
 		p.Content,
 		p.Sender,
 		p.Receiver,

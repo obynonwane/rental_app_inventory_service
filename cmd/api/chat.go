@@ -166,6 +166,7 @@ func (app *Config) SubmitChat(w http.ResponseWriter, r *http.Request) {
 		SentAt:      requestPayload.SentAt,
 		Type:        msgType,
 		ContentType: mimeType,
+		MessageID:   requestPayload.MessageID,
 	})
 	if err != nil {
 		app.errorJSON(w, err, nil, http.StatusInternalServerError)

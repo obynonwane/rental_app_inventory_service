@@ -18,6 +18,7 @@ type User struct {
 	Verified    bool                    `json:"verified"`
 	CreatedAt   time.Time               `json:"created_at"`
 	UpdatedAt   time.Time               `json:"updated_at"`
+	UserSlug    string                  `json:"user_slug"`
 	Inventories []Inventory             `json:"inventories,omitempty"` // One-to-many relationship
 }
 

@@ -1095,7 +1095,7 @@ func (u *PostgresRepository) CreateUserRating(
 
 func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
 
-	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at FROM users WHERE id = $1`
+	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE id = $1`
 
 	row := u.Conn.QueryRowContext(ctx, query, id)
 
@@ -1112,11 +1112,50 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 		&userImg,
 		&user.UpdatedAt,
 		&user.CreatedAt,
+		&user.UserSlug,
 	)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("no user found with ID %s", id)
+		}
+		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
+	}
+
+	if userImg.Valid {
+		user.ProfileImg = wrapperspb.String(userImg.String)
+	} else {
+		user.ProfileImg = &wrapperspb.StringValue{}
+	}
+	log.Println(user, "the user is here")
+
+	return &user, nil
+}
+func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*User, error) {
+
+	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE user_slug = $1`
+
+	row := u.Conn.QueryRowContext(ctx, query, slug)
+
+	var user User
+	var userImg sql.NullString
+
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+		&user.Phone,
+		&user.Verified,
+		&userImg,
+		&user.UpdatedAt,
+		&user.CreatedAt,
+		&user.UserSlug,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with ID %s", slug)
 		}
 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
 	}
@@ -2280,7 +2319,8 @@ func (r *PostgresRepository) GetChatList(ctx context.Context, userID string) ([]
 						WHEN sender_id = $1 THEN receiver_id
 						ELSE sender_id
 					END
-		WHERE sender_id = $1 OR receiver_id = $1
+		WHERE (sender_id = $1 OR receiver_id = $1)
+		AND deleted_at IS NULL
 		ORDER BY partner_id, sent_at DESC
 		) sub
 		ORDER BY sent_at DESC

@@ -814,6 +814,37 @@ func (i *InventoryServer) RateUser(ctx context.Context, req *inventory.UserRatin
 	}
 }
 
+func (app *Config) GetUserDetail(w http.ResponseWriter, r *http.Request) {
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	userSlug := r.FormValue("user_slug")
+
+	// get the user detail
+	user, err := app.Repo.GetUserBySlug(timeoutCtx, userSlug)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	// get user total listing
+	// get user average rating
+	// get the user address
+	// user kyc
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "data retrieved succesfully",
+		Data:       user,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
 func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.SingleInventoryRequestDetail) (*inventory.InventoryResponseDetail, error) {
 
 	// 1. channel to hold inventory & error channel
@@ -923,7 +954,17 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 				LgaId:     di.LgaId,
 				Lga:       &inventory.LGA{Id: lga.ID, Name: lga.Name, StateId: lga.StateID},
 				Images:    mapToProtoImages(di.Images),
-				User:      &inventory.User{Id: user.ID, FirstName: user.FirstName, LastName: user.LastName, Phone: user.Phone, Email: user.Email, Verified: user.Verified, ProfileImg: &user.ProfileImg.Value, CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)), UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt))},
+				User: &inventory.User{
+					Id:             user.ID,
+					FirstName:      user.FirstName,
+					LastName:       user.LastName,
+					Phone:          user.Phone,
+					Email:          user.Email,
+					Verified:       user.Verified,
+					ProfileImg:     &user.ProfileImg.Value,
+					CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
+					UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
+					UserSlug:       &user.UserSlug},
 
 				StateSlug:       di.StateSlug,
 				CountrySlug:     di.CountrySlug,

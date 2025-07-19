@@ -49,4 +49,6 @@ type Repository interface {
 	GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error)
 	GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error)
 	GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error)
+	GetBusinessKycByUserID(ctx context.Context, userID string) (*BusinessKyc, error)
+	GetRenterKycByUserID(ctx context.Context, userID string) (*RenterKyc, error)
 }

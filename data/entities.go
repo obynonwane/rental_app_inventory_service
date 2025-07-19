@@ -6,20 +6,28 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+type AccountType struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // User is the structure which holds one user from the database.
 type User struct {
-	ID          string                  `json:"id"`
-	Email       string                  `json:"email"`
-	FirstName   string                  `json:"first_name,omitempty"`
-	LastName    string                  `json:"last_name,omitempty"`
-	Phone       string                  `json:"phone"`
-	Password    string                  `json:"-"`
-	ProfileImg  *wrapperspb.StringValue `json:"profile_img"`
-	Verified    bool                    `json:"verified"`
-	CreatedAt   time.Time               `json:"created_at"`
-	UpdatedAt   time.Time               `json:"updated_at"`
-	UserSlug    string                  `json:"user_slug"`
-	Inventories []Inventory             `json:"inventories,omitempty"` // One-to-many relationship
+	ID           string                  `json:"id"`
+	Email        string                  `json:"email"`
+	FirstName    string                  `json:"first_name,omitempty"`
+	LastName     string                  `json:"last_name,omitempty"`
+	Phone        string                  `json:"phone"`
+	Password     string                  `json:"-"`
+	ProfileImg   *wrapperspb.StringValue `json:"profile_img"`
+	Verified     bool                    `json:"verified"`
+	CreatedAt    time.Time               `json:"created_at"`
+	UpdatedAt    time.Time               `json:"updated_at"`
+	UserSlug     string                  `json:"user_slug"`
+	Inventories  []Inventory             `json:"inventories,omitempty"`  // One-to-many relationship
+	AccountTypes []AccountType           `json:"account_type,omitempty"` // One-to-many relationship
 }
 
 type Category struct {
@@ -261,6 +269,38 @@ type BusinessKyc struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type RenterKyc struct {
+	ID      string `json:"id"`
+	Address string `json:"address"`
+
+	UploadedImage  string `json:"uploaded_image,omitempty"`
+	IdentityNumber string `json:"identity_number,omitempty"`
+
+	IdentityTypeID string        `json:"identity_type_id"`
+	IdentityType   *IdentityType `json:"identity_type,omitempty"`
+
+	UserID string `json:"user_id"`
+	User   *User  `json:"user,omitempty"`
+
+	CountryID string   `json:"country_id"`
+	Country   *Country `json:"country,omitempty"`
+
+	StateID string `json:"state_id"`
+	State   *State `json:"state,omitempty"`
+
+	LgaID string `json:"lga_id"`
+	Lga   *Lga   `json:"lga,omitempty"`
+
+	Verified   bool `json:"verified"`
+	ActivePlan bool `json:"active_plan"`
+
+	PlanID string `json:"plan_id"`
+	Plan   *Plan  `json:"plan,omitempty"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Plan struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
@@ -268,6 +308,13 @@ type Plan struct {
 	AnnualPrice  float64   `json:"annual_price"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type IdentityType struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SavedInventory struct {

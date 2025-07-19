@@ -1131,14 +1131,42 @@ func (u *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 
 	return &user, nil
 }
-func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*User, error) {
+func (r *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*User, error) {
+	const query = `
+			SELECT
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone,
+			u.verified,
+			u.profile_img,
+			u.updated_at,
+			u.created_at,
+			u.user_slug,
+			COALESCE(array_agg(at.name) FILTER (WHERE at.name IS NOT NULL), '{}') AS account_types
+			FROM users u
+			LEFT JOIN user_account_types uat ON uat.user_id = u.id
+			LEFT JOIN account_types     at  ON at.id      = uat.account_type_id
+			WHERE u.user_slug = $1
+			GROUP BY
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone,
+			u.verified,
+			u.profile_img,
+			u.updated_at,
+			u.created_at,
+			u.user_slug;
+		`
 
-	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE user_slug = $1`
-
-	row := u.Conn.QueryRowContext(ctx, query, slug)
+	row := r.Conn.QueryRowContext(ctx, query, slug)
 
 	var user User
 	var userImg sql.NullString
+	var rawTypes pq.StringArray
 
 	err := row.Scan(
 		&user.ID,
@@ -1151,13 +1179,13 @@ func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*U
 		&user.UpdatedAt,
 		&user.CreatedAt,
 		&user.UserSlug,
+		&rawTypes,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("no user found with ID %s", slug)
+			return nil, fmt.Errorf("no user found with slug %q", slug)
 		}
-		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
+		return nil, fmt.Errorf("error retrieving user by slug: %w", err)
 	}
 
 	if userImg.Valid {
@@ -1165,10 +1193,58 @@ func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*U
 	} else {
 		user.ProfileImg = &wrapperspb.StringValue{}
 	}
-	log.Println(user, "the user is here")
 
+	// Map rawTypes ([]string) into []AccountType
+	for _, name := range rawTypes {
+		// skip any empty entries
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		user.AccountTypes = append(user.AccountTypes, AccountType{Name: name})
+	}
+
+	log.Printf("loaded user %+v with types %#v\n", user, rawTypes)
 	return &user, nil
 }
+
+// func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*User, error) {
+
+// 	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE user_slug = $1`
+
+// 	row := u.Conn.QueryRowContext(ctx, query, slug)
+
+// 	var user User
+// 	var userImg sql.NullString
+
+// 	err := row.Scan(
+// 		&user.ID,
+// 		&user.Email,
+// 		&user.FirstName,
+// 		&user.LastName,
+// 		&user.Phone,
+// 		&user.Verified,
+// 		&userImg,
+// 		&user.UpdatedAt,
+// 		&user.CreatedAt,
+// 		&user.UserSlug,
+// 	)
+
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			return nil, fmt.Errorf("no user found with ID %s", slug)
+// 		}
+// 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
+// 	}
+
+// 	if userImg.Valid {
+// 		user.ProfileImg = wrapperspb.String(userImg.String)
+// 	} else {
+// 		user.ProfileImg = &wrapperspb.StringValue{}
+// 	}
+// 	log.Println(user, "the user is here")
+
+// 	return &user, nil
+// }
 
 type RatingSummary struct {
 	FiveStar      int32   `json:"five_star"`
@@ -2935,4 +3011,308 @@ func (r *PostgresRepository) DeleteChat(ctx context.Context, id, userId string) 
 		WHERE id = $1 AND sender_id = $2 
 	`, id, userId)
 	return err
+}
+
+// GetRenterKycByUserID loads a RenterKyc by user_id, joining IdentityType, User, Country, State, Lga, and Plan.
+func (r *PostgresRepository) GetRenterKycByUserID(ctx context.Context, userID string) (*RenterKyc, error) {
+	const q = `
+			SELECT
+			rk.id,
+			rk.address,
+			rk.uploaded_image,
+			rk.identity_number,
+
+			-- identity_type
+			it.id   AS it_id,
+			it.name AS it_name,
+
+			-- user
+			u.id, u.email, u.first_name, u.last_name, u.phone,
+			u.verified     AS user_verified,
+			u.profile_img,
+			u.created_at   AS user_created_at,
+			u.updated_at   AS user_updated_at,
+			u.user_slug,
+
+			-- country
+			c.id           AS country_id,
+			c.name         AS country_name,
+			c.code         AS country_code,
+			c.created_at   AS country_created,
+			c.updated_at   AS country_updated,
+
+			-- state
+			s.id           AS state_id,
+			s.name         AS state_name,
+			s.state_slug   AS state_slug,
+			s.country_id   AS state_country_id,
+			s.created_at   AS state_created,
+			s.updated_at   AS state_updated,
+
+			-- lga
+			l.id           AS lga_id,
+			l.name         AS lga_name,
+			l.lga_slug     AS lga_slug,
+			l.state_id     AS lga_state_id,
+			l.created_at   AS lga_created,
+			l.updated_at   AS lga_updated,
+
+			rk.verified,
+			rk.active_plan,
+			rk.created_at  AS rk_created,
+			rk.updated_at  AS rk_updated
+			FROM renter_kycs rk
+			JOIN identity_types it ON it.id = rk.identity_type_id
+			JOIN users         u  ON u.id  = rk.user_id
+			JOIN countries     c  ON c.id  = rk.country_id
+			JOIN states        s  ON s.id  = rk.state_id
+			JOIN lgas          l  ON l.id  = rk.lga_id
+			WHERE rk.user_id = $1;
+		`
+
+	row := r.Conn.QueryRowContext(ctx, q, userID)
+
+	var (
+		rawUploadedImage  sql.NullString
+		rawIdentityNumber sql.NullString
+		rawUserImg        sql.NullString
+	)
+
+	var (
+		rk RenterKyc
+		it IdentityType
+		u  User
+		c  Country
+		s  State
+		l  Lga
+	)
+
+	err := row.Scan(
+		// renter_kyc
+		&rk.ID,
+		&rk.Address,
+		&rawUploadedImage,
+		&rawIdentityNumber,
+
+		// identity_type
+		&it.ID,
+		&it.Name,
+
+		// user
+		&u.ID,
+		&u.Email,
+		&u.FirstName,
+		&u.LastName,
+		&u.Phone,
+		&u.Verified,
+		&rawUserImg,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.UserSlug,
+
+		// country
+		&c.ID,
+		&c.Name,
+		&c.Code,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+
+		// state
+		&s.ID,
+		&s.Name,
+		&s.StateSlug,
+		&s.CountryID,
+		&s.CreatedAt,
+		&s.UpdatedAt,
+
+		// lga
+		&l.ID,
+		&l.Name,
+		&l.LgaSlug,
+		&l.StateID,
+		&l.CreatedAt,
+		&l.UpdatedAt,
+
+		// renter_kyc flags & timestamps
+		&rk.Verified,
+		&rk.ActivePlan,
+		&rk.CreatedAt,
+		&rk.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no renter KYC found for user %q", userID)
+		}
+		return nil, fmt.Errorf("query renter_kyc: %w", err)
+	}
+
+	// unpack nullable fields
+	if rawUploadedImage.Valid {
+		rk.UploadedImage = rawUploadedImage.String
+	}
+	if rawIdentityNumber.Valid {
+		rk.IdentityNumber = rawIdentityNumber.String
+	}
+	if rawUserImg.Valid {
+		u.ProfileImg = wrapperspb.String(rawUserImg.String)
+	}
+
+	// assemble relationships
+	rk.IdentityType = &it
+	rk.User = &u
+	rk.Country = &c
+	rk.State = &s
+	rk.Lga = &l
+
+	// set the foreign‑key IDs
+	rk.IdentityTypeID = it.ID
+	rk.UserID = u.ID
+	rk.CountryID = c.ID
+	rk.StateID = s.ID
+	rk.LgaID = l.ID
+
+	return &rk, nil
+}
+
+func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID string) (*BusinessKyc, error) {
+	const q = `
+			SELECT
+			b.id,
+			b.address,
+			b.cac_number,
+			b.display_name,
+			b.description,
+			b.key_bonus,
+			b.business_registered,
+
+			-- user fields
+			u.id, u.email, u.first_name, u.last_name, u.phone,
+			u.verified AS user_verified,
+			u.profile_img,
+			u.created_at AS user_created_at,
+			u.updated_at AS user_updated_at,
+			u.user_slug,
+
+			-- country
+			c.id AS country_id, c.name AS country_name, c.code AS country_code,
+			c.created_at AS country_created, c.updated_at AS country_updated,
+
+			-- state
+			s.id AS state_id, s.name AS state_name, s.state_slug,
+			s.country_id AS state_country_id,
+			s.created_at AS state_created, s.updated_at AS state_updated,
+
+			-- lga
+			l.id AS lga_id, l.name AS lga_name, l.lga_slug,
+			l.state_id AS lga_state_id,
+			l.created_at AS lga_created, l.updated_at AS lga_updated,
+
+			b.verified,
+			b.active_plan,
+			b.shop_banner,
+			b.created_at AS b_created_at,
+			b.updated_at AS b_updated_at
+			FROM business_kycs b
+			JOIN users       u ON u.id      = b.user_id
+			JOIN countries   c ON c.id      = b.country_id
+			JOIN states      s ON s.id      = b.state_id
+			JOIN lgas        l ON l.id      = b.lga_id
+			WHERE b.user_id = $1;
+		`
+
+	row := r.Conn.QueryRowContext(ctx, q, userID)
+
+	var (
+		rawCac        sql.NullString
+		rawUserImg    sql.NullString
+		rawShopBanner sql.NullString
+
+		bc BusinessKyc
+		u  User
+		c  Country
+		s  State
+		l  Lga
+	)
+
+	err := row.Scan(
+		// business_kyc
+		&bc.ID,
+		&bc.Address,
+		&rawCac,
+		&bc.DisplayName,
+		&bc.Description,
+		&bc.KeyBonus,
+		&bc.BusinessRegistered,
+
+		// user
+		&u.ID,
+		&u.Email,
+		&u.FirstName,
+		&u.LastName,
+		&u.Phone,
+		&u.Verified,
+		&rawUserImg,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.UserSlug,
+
+		// country
+		&c.ID,
+		&c.Name,
+		&c.Code,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+
+		// state
+		&s.ID,
+		&s.Name,
+		&s.StateSlug,
+		&s.CountryID,
+		&s.CreatedAt,
+		&s.UpdatedAt,
+
+		// lga
+		&l.ID,
+		&l.Name,
+		&l.LgaSlug,
+		&l.StateID,
+		&l.CreatedAt,
+		&l.UpdatedAt,
+
+		// business_kyc flags & banner & timestamps
+		&bc.Verified,
+		&bc.ActivePlan,
+		&rawShopBanner,
+		&bc.CreatedAt,
+		&bc.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no BusinessKyc for user %q", userID)
+		}
+		return nil, fmt.Errorf("query BusinessKyc: %w", err)
+	}
+
+	// handle nullable fields
+	if rawCac.Valid {
+		bc.CacNumber = &rawCac.String
+	}
+	if rawUserImg.Valid {
+		u.ProfileImg = wrapperspb.String(rawUserImg.String)
+	}
+	if rawShopBanner.Valid {
+		bc.ShopBanner = rawShopBanner.String
+	}
+
+	// assemble
+	bc.User = &u
+	bc.Country = &c
+	bc.State = &s
+	bc.Lga = &l
+	bc.UserID = userID
+	bc.CountryID = c.ID
+	bc.StateID = s.ID
+	bc.LgaID = l.ID
+
+	return &bc, nil
 }

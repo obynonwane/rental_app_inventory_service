@@ -830,16 +830,54 @@ func (app *Config) GetUserDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get user total listing
-	// get user average rating
+	// get the user rating and count
+	userRatingCount, err := app.Repo.UserRatingAndCount(timeoutCtx, user.ID)
+	if err != nil {
+		log.Fatal("error retrieving user rating: %w", err)
+	}
+
+	// get the total user listing
+	totalListingCount, err := app.Repo.TotalUserInventoryListing(timeoutCtx, user.ID)
+	if err != nil {
+		log.Fatal("error retrieving total listing  for user: %w", err)
+	}
+
+	var userType = "individual"
+	var userKycDetail interface{}
+
 	// get the user address
-	// user kyc
+	for _, det := range user.AccountTypes {
+		if det.Name == "business" {
+			userType = "business"
+		}
+	}
+
+	if userType == "business" {
+		businessKyc, err := app.Repo.GetBusinessKycByUserID(timeoutCtx, user.ID)
+		if err != nil {
+			log.Fatal("error retrieving business kyc: %w", err)
+		}
+
+		userKycDetail = businessKyc
+	} else {
+		renterKyc, err := app.Repo.GetRenterKycByUserID(timeoutCtx, user.ID)
+		if err != nil {
+			log.Fatal("error retrieving renter kyc: %w", err)
+		}
+
+		userKycDetail = renterKyc
+	}
 
 	payload := jsonResponse{
 		Error:      false,
 		StatusCode: http.StatusAccepted,
 		Message:    "data retrieved succesfully",
-		Data:       user,
+		Data: map[string]any{
+			"user":              user,
+			"userRatingCount":   userRatingCount,
+			"totalListingCount": totalListingCount,
+			"kycs":              userKycDetail,
+		},
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

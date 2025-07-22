@@ -1341,6 +1341,18 @@ func (s *InventoryServer) SearchInventory(
 	ctx, cancel := context.WithTimeout(ctx, handlerTimeout)
 	defer cancel()
 
+	// check if user_slug is null
+	if req.UserSlug != "" {
+		// get user with slug
+		userWithSlug, err := s.Models.GetUserWithSuppliedSlug(ctx, req.UserSlug)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal,
+				"failed to search inventories: %v", err)
+		}
+
+		req.UserId = userWithSlug.ID
+	}
+
 	// 2) Build your data.SearchPayload (Limit/Offset as strings)
 	param := &data.SearchPayload{
 		CountryID:       req.CountryId,
@@ -1359,6 +1371,7 @@ func (s *InventoryServer) SearchInventory(
 		SubcategorySlug: req.SubcategorySlug,
 		UserID:          req.UserId,
 		ProductPurpose:  req.ProductPurpose,
+		UserSlug:        req.UserSlug,
 	}
 
 	// 3) Call your repo

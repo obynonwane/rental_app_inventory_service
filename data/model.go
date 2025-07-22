@@ -1596,6 +1596,7 @@ type SearchPayload struct {
 	SubcategorySlug string `json:"subcategory_slug"`
 	UserID          string `json:"user_id"`
 	ProductPurpose  string `json:"product_purpose"`
+	UserSlug        string `json:"user_slug"`
 }
 
 type GetCategoryByIDPayload struct {
@@ -3315,4 +3316,43 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 	bc.LgaID = l.ID
 
 	return &bc, nil
+}
+
+func (u *PostgresRepository) GetUserWithSuppliedSlug(ctx context.Context, slug string) (*User, error) {
+
+	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE user_slug = $1`
+
+	row := u.Conn.QueryRowContext(ctx, query, slug)
+
+	var user User
+	var userImg sql.NullString
+
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+		&user.Phone,
+		&user.Verified,
+		&userImg,
+		&user.UpdatedAt,
+		&user.CreatedAt,
+		&user.UserSlug,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no user found with slug %s", slug)
+		}
+		return nil, fmt.Errorf("error retrieving user by slug: %w", err)
+	}
+
+	if userImg.Valid {
+		user.ProfileImg = wrapperspb.String(userImg.String)
+	} else {
+		user.ProfileImg = &wrapperspb.StringValue{}
+	}
+	log.Println(user, "the user is here")
+
+	return &user, nil
 }

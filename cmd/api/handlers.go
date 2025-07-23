@@ -1138,10 +1138,11 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
 				Rater: &inventory.User{
-					Id:        singleRating.RaterId,
-					FirstName: singleRating.RaterDetails.FirstName,
-					Email:     singleRating.RaterDetails.Email,
-					LastName:  singleRating.RaterDetails.LastName,
+					Id:         singleRating.RaterId,
+					FirstName:  singleRating.RaterDetails.FirstName,
+					Email:      singleRating.RaterDetails.Email,
+					LastName:   singleRating.RaterDetails.LastName,
+					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
 				},
 			}
 			allUserRating = append(allUserRating, rating)
@@ -1213,16 +1214,18 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 					FirstName: singleRating.RaterDetails.FirstName,
 					Email:     singleRating.RaterDetails.Email,
 					LastName:  singleRating.RaterDetails.LastName,
+					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
 				},
 			}
 
 			var replies []*inventory.InventoryRatingReplyResponse
 			for _, reply := range singleRating.Replies {
 				replierDetails := &inventory.User{
-					Id:        reply.ReplierDetails.ID,
-					FirstName: reply.ReplierDetails.FirstName,
-					LastName:  reply.ReplierDetails.LastName,
-					Email:     reply.ReplierDetails.Email,
+					Id:         reply.ReplierDetails.ID,
+					FirstName:  reply.ReplierDetails.FirstName,
+					LastName:   reply.ReplierDetails.LastName,
+					Email:      reply.ReplierDetails.Email,
+					ProfileImg: &reply.ReplierDetails.ProfileImg.Value,
 				}
 
 				var parentReplyID string

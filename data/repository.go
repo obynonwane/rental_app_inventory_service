@@ -52,4 +52,7 @@ type Repository interface {
 	GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error)
 	GetBusinessKycByUserID(ctx context.Context, userID string) (*BusinessKyc, error)
 	GetRenterKycByUserID(ctx context.Context, userID string) (*RenterKyc, error)
+
+	GetInventoryRatingReplies(ctx context.Context, ratingID string) ([]*InventoryRatingReply, error)
+	GetUserRatingReplies(ctx context.Context, ratingID string) ([]*UserRatingReply, error)
 }

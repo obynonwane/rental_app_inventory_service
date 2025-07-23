@@ -1207,45 +1207,6 @@ func (r *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*U
 	return &user, nil
 }
 
-// func (u *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*User, error) {
-
-// 	query := `SELECT id, email, first_name, last_name, phone, verified, profile_img, updated_at, created_at, user_slug FROM users WHERE user_slug = $1`
-
-// 	row := u.Conn.QueryRowContext(ctx, query, slug)
-
-// 	var user User
-// 	var userImg sql.NullString
-
-// 	err := row.Scan(
-// 		&user.ID,
-// 		&user.Email,
-// 		&user.FirstName,
-// 		&user.LastName,
-// 		&user.Phone,
-// 		&user.Verified,
-// 		&userImg,
-// 		&user.UpdatedAt,
-// 		&user.CreatedAt,
-// 		&user.UserSlug,
-// 	)
-
-// 	if err != nil {
-// 		if err == sql.ErrNoRows {
-// 			return nil, fmt.Errorf("no user found with ID %s", slug)
-// 		}
-// 		return nil, fmt.Errorf("error retrieving user by ID: %w", err)
-// 	}
-
-// 	if userImg.Valid {
-// 		user.ProfileImg = wrapperspb.String(userImg.String)
-// 	} else {
-// 		user.ProfileImg = &wrapperspb.StringValue{}
-// 	}
-// 	log.Println(user, "the user is here")
-
-// 	return &user, nil
-// }
-
 type RatingSummary struct {
 	FiveStar      int32   `json:"five_star"`
 	FourStar      int32   `json:"four_star"`
@@ -3355,4 +3316,156 @@ func (u *PostgresRepository) GetUserWithSuppliedSlug(ctx context.Context, slug s
 	log.Println(user, "the user is here")
 
 	return &user, nil
+}
+
+func (u *PostgresRepository) GetInventoryRatingReplies(ctx context.Context, ratingID string) ([]*InventoryRatingReply, error) {
+	const query = `
+        SELECT
+            r.id,
+            r.rating_id,
+            r.replier_id,
+            r.comment,
+            r.created_at      AS reply_created_at,
+            r.updated_at      AS reply_updated_at,
+            u.id              AS user_id,
+            u.email           AS user_email,
+            u.first_name      AS user_first_name,
+            u.last_name       AS user_last_name,
+            u.phone           AS user_phone,
+            u.verified        AS user_verified,
+            u.profile_img     AS user_profile_img,
+            u.created_at      AS user_created_at,
+            u.updated_at      AS user_updated_at,
+            u.user_slug       AS user_slug
+        FROM inventory_rating_replies AS r
+        JOIN users AS u
+          ON r.replier_id = u.id
+        WHERE r.rating_id = $1
+        ORDER BY r.created_at ASC;
+    `
+
+	rows, err := u.Conn.QueryContext(ctx, query, ratingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Initialize to an empty slice so we never return nil
+	replies := make([]*InventoryRatingReply, 0, 8)
+
+	for rows.Next() {
+		var (
+			reply   InventoryRatingReply
+			imgNull sql.NullString
+		)
+		if err := rows.Scan(
+			&reply.ID,
+			&reply.RatingID,
+			&reply.ReplierID,
+			&reply.Comment,
+			&reply.CreatedAt,
+			&reply.UpdatedAt,
+			&reply.ReplierDetails.ID,
+			&reply.ReplierDetails.Email,
+			&reply.ReplierDetails.FirstName,
+			&reply.ReplierDetails.LastName,
+			&reply.ReplierDetails.Phone,
+			&reply.ReplierDetails.Verified,
+			&imgNull, // nullable profile_img
+			&reply.ReplierDetails.CreatedAt,
+			&reply.ReplierDetails.UpdatedAt,
+			&reply.ReplierDetails.UserSlug,
+		); err != nil {
+			return nil, err
+		}
+
+		if imgNull.Valid {
+			reply.ReplierDetails.ProfileImg = wrapperspb.String(imgNull.String)
+		} else {
+			reply.ReplierDetails.ProfileImg = nil
+		}
+
+		replies = append(replies, &reply)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Even if len(replies)==0, this returns [](*InventoryRatingReply){}, not nil
+	return replies, nil
+}
+
+func (u *PostgresRepository) GetUserRatingReplies(ctx context.Context, ratingID string) ([]*UserRatingReply, error) {
+	const query = `
+        SELECT
+            r.id,
+            r.rating_id,
+            r.replier_id,
+            r.comment,
+            r.created_at      AS reply_created_at,
+            r.updated_at      AS reply_updated_at,
+            u.id              AS user_id,
+            u.email           AS user_email,
+            u.first_name      AS user_first_name,
+            u.last_name       AS user_last_name,
+            u.phone           AS user_phone,
+            u.verified        AS user_verified,
+            u.profile_img     AS user_profile_img,
+            u.created_at      AS user_created_at,
+            u.updated_at      AS user_updated_at,
+            u.user_slug       AS user_slug
+        FROM user_rating_replies AS r
+        JOIN users AS u
+          ON r.replier_id = u.id
+        WHERE r.rating_id = $1
+        ORDER BY r.created_at ASC;
+    `
+
+	rows, err := u.Conn.QueryContext(ctx, query, ratingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Initialize to an empty slice so we never return nil
+	replies := make([]*UserRatingReply, 0, 8)
+
+	for rows.Next() {
+		var (
+			reply   UserRatingReply
+			imgNull sql.NullString
+		)
+		if err := rows.Scan(
+			&reply.ID,
+			&reply.RatingID,
+			&reply.ReplierID,
+			&reply.Comment,
+			&reply.CreatedAt,
+			&reply.UpdatedAt,
+			&reply.ReplierDetails.ID,
+			&reply.ReplierDetails.Email,
+			&reply.ReplierDetails.FirstName,
+			&reply.ReplierDetails.LastName,
+			&reply.ReplierDetails.Phone,
+			&reply.ReplierDetails.Verified,
+			&imgNull, // nullable profile_img
+			&reply.ReplierDetails.CreatedAt,
+			&reply.ReplierDetails.UpdatedAt,
+			&reply.ReplierDetails.UserSlug,
+		); err != nil {
+			return nil, err
+		}
+
+		if imgNull.Valid {
+			reply.ReplierDetails.ProfileImg = wrapperspb.String(imgNull.String)
+		} else {
+			reply.ReplierDetails.ProfileImg = nil
+		}
+
+		replies = append(replies, &reply)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Even if len(replies)==0, this returns [](*InventoryRatingReply){}, not nil
+	return replies, nil
 }

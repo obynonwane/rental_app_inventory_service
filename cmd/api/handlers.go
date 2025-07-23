@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Define a custom type for the context key
@@ -1144,7 +1145,11 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 					LastName:   singleRating.RaterDetails.LastName,
 					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
 				},
+
+				RepliesCount: wrapperspb.Int32(singleRating.RepliesCount),
 			}
+
+			log.Printf("THE RATING WITH COUNT %v", rating)
 			allUserRating = append(allUserRating, rating)
 		}
 
@@ -1210,10 +1215,10 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
 				Rater: &inventory.User{
-					Id:        singleRating.RaterId,
-					FirstName: singleRating.RaterDetails.FirstName,
-					Email:     singleRating.RaterDetails.Email,
-					LastName:  singleRating.RaterDetails.LastName,
+					Id:         singleRating.RaterId,
+					FirstName:  singleRating.RaterDetails.FirstName,
+					Email:      singleRating.RaterDetails.Email,
+					LastName:   singleRating.RaterDetails.LastName,
 					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
 				},
 			}

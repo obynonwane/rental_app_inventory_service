@@ -6,14 +6,13 @@ toolchain go1.22.9
 
 require (
 	github.com/cloudinary/cloudinary-go v1.7.0
-	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-chi/cors v1.2.1
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.2
-	github.com/obynonwane/rental-service-proto v0.0.0-20250722160848-6d78984aabe0
+	github.com/obynonwane/rental-service-proto v0.0.0-20250723181437-ea679f547cb8
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/prometheus/client_golang v1.20.2
 	github.com/stretchr/testify v1.9.0

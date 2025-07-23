@@ -1235,7 +1235,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	query := `
 		SELECT 
 			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
-			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone,
+			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
 			COALESCE(
 				JSON_AGG(
 					JSON_BUILD_OBJECT(
@@ -1271,8 +1271,12 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 
 	// Iterate through the result set
 	for rows.Next() {
-		var ratingWithRater InventoryRating
-		var repliesJSON string
+
+		var (
+			ratingWithRater InventoryRating
+			repliesJSON     string
+			imgNull         sql.NullString
+		)
 
 		err := rows.Scan(
 			&ratingWithRater.ID,
@@ -1288,6 +1292,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			&ratingWithRater.RaterDetails.LastName,
 			&ratingWithRater.RaterDetails.Email,
 			&ratingWithRater.RaterDetails.Phone,
+			&imgNull,
 			&repliesJSON, // JSON string of replies
 		)
 		if err != nil {
@@ -1295,6 +1300,11 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			return nil, 0, err
 		}
 
+		if imgNull.Valid {
+			ratingWithRater.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
+		} else {
+			ratingWithRater.RaterDetails.ProfileImg = nil
+		}
 		// Parse replies JSON into a slice of replies
 		var replies []InventoryRatingReply
 		if err := json.Unmarshal([]byte(repliesJSON), &replies); err != nil {
@@ -1344,7 +1354,7 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 	// Query to fetch ratings and rater details
 	query := `SELECT 
                   ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
-                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone
+                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img
               FROM user_ratings ur
               JOIN users u ON ur.rater_id = u.id
               WHERE ur.user_id = $1
@@ -1363,6 +1373,7 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 	// Iterate through the result set
 	for rows.Next() {
 		var ratingWithRater UserRating
+		var imgNull sql.NullString
 		err := rows.Scan(
 			&ratingWithRater.ID,
 			&ratingWithRater.UserId,
@@ -1376,10 +1387,17 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 			&ratingWithRater.RaterDetails.LastName,
 			&ratingWithRater.RaterDetails.Email,
 			&ratingWithRater.RaterDetails.Phone,
+			&imgNull,
 		)
 		if err != nil {
 			log.Println("Error scanning", err)
 			return nil, 0, err
+		}
+
+		if imgNull.Valid {
+			ratingWithRater.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
+		} else {
+			ratingWithRater.RaterDetails.ProfileImg = nil
 		}
 
 		ratings = append(ratings, &ratingWithRater)
@@ -2272,47 +2290,6 @@ func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB st
 
 	return chats, nil
 }
-
-// func (c *PostgresRepository) GetChatHistory(ctx context.Context, userA, userB string) ([]Chat, error) {
-// 	query := `
-// 		SELECT id, content, sender_id, receiver_id, sent_at, type, content_type, is_read, reply_to_id, created_at, updated_at
-// 		FROM chats
-// 		WHERE (sender_id = $1 AND receiver_id = $2)
-// 		   OR (sender_id = $2 AND receiver_id = $1)
-// 		ORDER BY sent_at ASC
-// 	`
-
-// 	rows, err := c.Conn.QueryContext(ctx, query, userA, userB)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("query error: %w", err)
-// 	}
-// 	defer rows.Close()
-
-// 	var chats []Chat
-// 	for rows.Next() {
-// 		var chat Chat
-// 		err := rows.Scan(
-// 			&chat.ID,
-// 			&chat.Content,
-// 			&chat.SenderID,
-// 			&chat.ReceiverID,
-// 			&chat.SentAt,
-// 			&chat.Type,
-// 			&chat.ContentType,
-// 			&chat.IsRead,
-// 			&chat.ReplyTo,
-// 			&chat.CreatedAt,
-// 			&chat.UpdatedAt,
-// 		)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("scan error: %w", err)
-// 		}
-// 		chats = append(chats, chat)
-
-// 	}
-
-// 	return chats, nil
-// }
 
 type ChatSummary struct {
 	ID          string                  `json:"id"`

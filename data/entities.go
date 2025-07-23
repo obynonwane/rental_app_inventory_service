@@ -127,6 +127,7 @@ type InventoryRating struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	RaterDetails User                   `json:"rater_details"`
 	Replies      []InventoryRatingReply `json:"replies"`
+	RepliesCount int32
 }
 
 type UserRating struct {
@@ -152,13 +153,14 @@ type InventoryRatingReply struct {
 }
 
 type UserRatingReply struct {
-	ID            string    `json:"id"`
-	RatingID      string    `json:"rating_id"`
-	ReplierID     string    `json:"replier_id"`
-	ParentReplyID *string   `json:"parent_reply_id"`
-	Comment       string    `json:"comment"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	RatingID       string    `json:"rating_id"`
+	ReplierID      string    `json:"replier_id"`
+	ParentReplyID  *string   `json:"parent_reply_id"`
+	Comment        string    `json:"comment"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	CreatedAt      time.Time `json:"created_at"`
+	ReplierDetails User      `json:"replier_details"`
 }
 
 type Country struct {

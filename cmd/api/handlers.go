@@ -883,6 +883,57 @@ func (app *Config) GetUserDetail(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
 
+func (app *Config) GetInventoryRatingReplies(w http.ResponseWriter, r *http.Request) {
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	ratingID := r.FormValue("rating_id")
+
+	// get the user rating and count
+	data, err := app.Repo.GetInventoryRatingReplies(timeoutCtx, ratingID)
+	if err != nil {
+		log.Fatal("error retrieving user rating: %w", err)
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "data retrieved succesfully",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) GetUserRatingReplies(w http.ResponseWriter, r *http.Request) {
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	ratingID := r.FormValue("rating_id")
+
+	// get the user rating and count
+	data, err := app.Repo.GetUserRatingReplies(timeoutCtx, ratingID)
+	if err != nil {
+		log.Fatal("error retrieving user rating: %w", err)
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "data retrieved succesfully",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+
+}
+
 func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.SingleInventoryRequestDetail) (*inventory.InventoryResponseDetail, error) {
 
 	// 1. channel to hold inventory & error channel

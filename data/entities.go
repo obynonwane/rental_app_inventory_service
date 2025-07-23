@@ -139,6 +139,7 @@ type UserRating struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	CreatedAt    time.Time `json:"created_at"`
 	RaterDetails User      `json:"rater_details"`
+	RepliesCount int32     `json:"replies_count"` 
 }
 
 type InventoryRatingReply struct {

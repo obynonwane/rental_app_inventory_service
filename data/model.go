@@ -1339,27 +1339,101 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	return ratings, totalRows, nil
 }
 
+// func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
+// 	offset := (page - 1) * limit // Calculate offset
+
+// 	var totalRows int32 // Variable to hold the total count
+
+// 	// Query to count total rows
+// 	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
+// 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
+// 	if err := row.Scan(&totalRows); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Query to fetch ratings and rater details
+// 	query := `SELECT
+//                   ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+//                   u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img
+//               FROM user_ratings ur
+//               JOIN users u ON ur.rater_id = u.id
+//               WHERE ur.user_id = $1
+//               ORDER BY ur.created_at DESC
+//               LIMIT $2 OFFSET $3`
+
+// 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
+// 	if err != nil {
+// 		log.Println(err, "ERROR")
+// 		return nil, 0, err
+// 	}
+// 	defer rows.Close()
+
+// 	var ratings []*UserRating
+
+// 	// Iterate through the result set
+// 	for rows.Next() {
+// 		var ratingWithRater UserRating
+// 		var imgNull sql.NullString
+// 		err := rows.Scan(
+// 			&ratingWithRater.ID,
+// 			&ratingWithRater.UserId,
+// 			&ratingWithRater.RaterId,
+// 			&ratingWithRater.Rating,
+// 			&ratingWithRater.Comment,
+// 			&ratingWithRater.UpdatedAt,
+// 			&ratingWithRater.CreatedAt,
+// 			&ratingWithRater.RaterDetails.ID,
+// 			&ratingWithRater.RaterDetails.FirstName,
+// 			&ratingWithRater.RaterDetails.LastName,
+// 			&ratingWithRater.RaterDetails.Email,
+// 			&ratingWithRater.RaterDetails.Phone,
+// 			&imgNull,
+// 		)
+// 		if err != nil {
+// 			log.Println("Error scanning", err)
+// 			return nil, 0, err
+// 		}
+
+// 		if imgNull.Valid {
+// 			ratingWithRater.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
+// 		} else {
+// 			ratingWithRater.RaterDetails.ProfileImg = nil
+// 		}
+
+// 		ratings = append(ratings, &ratingWithRater)
+// 	}
+
+// 	// Check for errors encountered during iteration
+// 	if err := rows.Err(); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	return ratings, totalRows, nil
+// }
+
 func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page int32, limit int32) ([]*UserRating, int32, error) {
-	offset := (page - 1) * limit // Calculate offset
+	offset := (page - 1) * limit
 
-	var totalRows int32 // Variable to hold the total count
-
-	// Query to count total rows
+	var totalRows int32
 	countQuery := "SELECT COUNT(*) FROM user_ratings WHERE user_id = $1"
 	row := u.Conn.QueryRowContext(ctx, countQuery, id)
 	if err := row.Scan(&totalRows); err != nil {
 		return nil, 0, err
 	}
 
-	// Query to fetch ratings and rater details
-	query := `SELECT 
-                  ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
-                  u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img
-              FROM user_ratings ur
-              JOIN users u ON ur.rater_id = u.id
-              WHERE ur.user_id = $1
-              ORDER BY ur.created_at DESC
-              LIMIT $2 OFFSET $3`
+		query := `
+		SELECT
+			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
+			COUNT(urr.id) AS replies_count
+		FROM user_ratings ur
+		JOIN users u ON ur.rater_id = u.id
+		LEFT JOIN user_rating_replies urr ON urr.rating_id = ur.id
+		WHERE ur.user_id = $1
+		GROUP BY ur.id, u.id
+		ORDER BY ur.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
 
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
 	if err != nil {
@@ -1370,40 +1444,40 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 
 	var ratings []*UserRating
 
-	// Iterate through the result set
 	for rows.Next() {
-		var ratingWithRater UserRating
+		var rating UserRating
 		var imgNull sql.NullString
+
 		err := rows.Scan(
-			&ratingWithRater.ID,
-			&ratingWithRater.UserId,
-			&ratingWithRater.RaterId,
-			&ratingWithRater.Rating,
-			&ratingWithRater.Comment,
-			&ratingWithRater.UpdatedAt,
-			&ratingWithRater.CreatedAt,
-			&ratingWithRater.RaterDetails.ID,
-			&ratingWithRater.RaterDetails.FirstName,
-			&ratingWithRater.RaterDetails.LastName,
-			&ratingWithRater.RaterDetails.Email,
-			&ratingWithRater.RaterDetails.Phone,
+			&rating.ID,
+			&rating.UserId,
+			&rating.RaterId,
+			&rating.Rating,
+			&rating.Comment,
+			&rating.UpdatedAt,
+			&rating.CreatedAt,
+			&rating.RaterDetails.ID,
+			&rating.RaterDetails.FirstName,
+			&rating.RaterDetails.LastName,
+			&rating.RaterDetails.Email,
+			&rating.RaterDetails.Phone,
 			&imgNull,
+			&rating.RepliesCount,
 		)
 		if err != nil {
-			log.Println("Error scanning", err)
+			log.Println("Error scanning rating:", err)
 			return nil, 0, err
 		}
 
 		if imgNull.Valid {
-			ratingWithRater.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
+			rating.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
 		} else {
-			ratingWithRater.RaterDetails.ProfileImg = nil
+			rating.RaterDetails.ProfileImg = nil
 		}
 
-		ratings = append(ratings, &ratingWithRater)
+		ratings = append(ratings, &rating)
 	}
 
-	// Check for errors encountered during iteration
 	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}

@@ -1207,6 +1207,12 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 		var allInventoryRating []*inventory.InventoryRatingResponse
 
 		for _, singleRating := range data {
+
+			var profileImg *string
+			if singleRating.RaterDetails.ProfileImg != nil {
+				profileImg = &singleRating.RaterDetails.ProfileImg.Value
+			}
+
 			rating := &inventory.InventoryRatingResponse{
 				Id:             singleRating.ID,
 				RaterId:        singleRating.RaterId,
@@ -1219,7 +1225,7 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 					FirstName:  singleRating.RaterDetails.FirstName,
 					Email:      singleRating.RaterDetails.Email,
 					LastName:   singleRating.RaterDetails.LastName,
-					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
+					ProfileImg: profileImg,
 				},
 			}
 

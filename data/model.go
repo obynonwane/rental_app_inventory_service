@@ -681,8 +681,11 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, inventory_id 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Println("no inventory found", err)
 			return nil, fmt.Errorf("no inventory found")
 		}
+
+		log.Println("no inventory found", err)
 		return nil, fmt.Errorf("error retrieving inventory: %w", err)
 	}
 
@@ -1262,7 +1265,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
 
 	if err != nil {
-		log.Println(err, "ERROR 4")
+		log.Println(err, "ERROR 3")
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -1296,7 +1299,6 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			&repliesJSON, // JSON string of replies
 		)
 		if err != nil {
-			log.Println("Error scanning", err)
 			return nil, 0, err
 		}
 
@@ -1317,6 +1319,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			// Fetch replier details (this assumes you have a function to get replier details by ID)
 			replierDetails, err := u.GetUserByID(ctx, reply.ReplierID)
 			if err != nil {
+				log.Println(err, "ERROR 5")
 				log.Printf("Error fetching replier details for reply %s: %v", reply.ID, err)
 				return nil, 0, err
 			}
@@ -1332,7 +1335,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 
 	// Check for errors encountered during iteration
 	if err := rows.Err(); err != nil {
-		log.Println(err, "ERROR 5")
+		log.Println(err)
 		return nil, 0, err
 	}
 
@@ -1421,7 +1424,7 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 		return nil, 0, err
 	}
 
-		query := `
+	query := `
 		SELECT
 			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,

@@ -1250,7 +1250,11 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 				})
 			}
 
-			rating.Replies = replies
+			// no replies included in the reply
+			// rating.Replies = replies
+
+			rating.RepliesCount = wrapperspb.Int32(int32(len(replies)))
+
 			allInventoryRating = append(allInventoryRating, rating)
 		}
 

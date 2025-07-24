@@ -1130,6 +1130,13 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 		var allUserRating []*inventory.UserRatingResponse
 
 		for _, singleRating := range data {
+
+			// check to make sure profile image do not throw eror
+			var profileImg *string
+			if &singleRating.RaterDetails.ProfileImg != nil {
+				profileImg = &singleRating.RaterDetails.ProfileImg.Value
+			}
+
 			rating := &inventory.UserRatingResponse{
 				Id:             singleRating.ID,
 				UserId:         singleRating.UserId,
@@ -1143,7 +1150,7 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 					FirstName:  singleRating.RaterDetails.FirstName,
 					Email:      singleRating.RaterDetails.Email,
 					LastName:   singleRating.RaterDetails.LastName,
-					ProfileImg: &singleRating.RaterDetails.ProfileImg.Value,
+					ProfileImg: profileImg,
 				},
 
 				RepliesCount: wrapperspb.Int32(singleRating.RepliesCount),
@@ -1208,6 +1215,7 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 
 		for _, singleRating := range data {
 
+			// check to make sure profile image do not throw eror
 			var profileImg *string
 			if singleRating.RaterDetails.ProfileImg != nil {
 				profileImg = &singleRating.RaterDetails.ProfileImg.Value
@@ -1231,12 +1239,19 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 
 			var replies []*inventory.InventoryRatingReplyResponse
 			for _, reply := range singleRating.Replies {
+
+				// check to make sure profile image do not throw eror
+				var profileImg *string
+				if reply.ReplierDetails.ProfileImg != nil {
+					profileImg = &reply.ReplierDetails.ProfileImg.Value
+				}
+
 				replierDetails := &inventory.User{
 					Id:         reply.ReplierDetails.ID,
 					FirstName:  reply.ReplierDetails.FirstName,
 					LastName:   reply.ReplierDetails.LastName,
 					Email:      reply.ReplierDetails.Email,
-					ProfileImg: &reply.ReplierDetails.ProfileImg.Value,
+					ProfileImg: profileImg,
 				}
 
 				var parentReplyID string

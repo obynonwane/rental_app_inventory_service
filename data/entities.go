@@ -268,6 +268,7 @@ type BusinessKyc struct {
 	ActivePlan bool `json:"active_plan"`
 
 	ShopBanner string `json:"shop_banner"`
+	Industries string `json:"industries"`
 
 	Subdomain string    `json:"subdomain"`
 	UpdatedAt time.Time `json:"updated_at"`

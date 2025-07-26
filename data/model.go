@@ -1216,7 +1216,7 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 		SELECT 
 			bk.id, bk.user_id, bk.subdomain, bk.verified, bk.updated_at, bk.created_at,
 			bk.state_id, bk.lga_id, bk.shop_banner, bk.plan_id, bk.key_bonus, bk.display_name, 
-			bk.description, bk.country_id, bk.address, bk.business_registered,
+			bk.description, bk.country_id, bk.address, bk.business_registered, bk.industries,
 			u.id, u.email, u.first_name, u.last_name, u.phone, u.password,
 			u.profile_img, u.verified, u.created_at, u.updated_at, u.user_slug,
 			array_agg(at.name) AS account_type_names
@@ -1252,6 +1252,7 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 		&bkyc.CountryID,
 		&bkyc.Address,
 		&bkyc.BusinessRegistered,
+		&bkyc.Industries,
 
 		&user.ID,
 		&user.Email,
@@ -3288,6 +3289,7 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 			b.country_id,
 			b.state_id,
 			b.lga_id,
+			b.industries,
 
 			-- user fields
 			u.id, u.email, u.first_name, u.last_name, u.phone,
@@ -3352,6 +3354,7 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 		&bc.StateID,
 		&bc.CountryID,
 		&bc.LgaID,
+		&bc.Industries,
 
 		// user
 		&u.ID,

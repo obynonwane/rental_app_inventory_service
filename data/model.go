@@ -1210,6 +1210,89 @@ func (r *PostgresRepository) GetUserBySlug(ctx context.Context, slug string) (*U
 	return &user, nil
 }
 
+func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain string) (*BusinessKyc, error) {
+
+	query := `
+		SELECT 
+			bk.id, bk.user_id, bk.subdomain, bk.verified, bk.updated_at, bk.created_at,
+			bk.state_id, bk.lga_id, bk.shop_banner, bk.plan_id, bk.key_bonus, bk.display_name, 
+			bk.description, bk.country_id, bk.address, bk.business_registered,
+			u.id, u.email, u.first_name, u.last_name, u.phone, u.password,
+			u.profile_img, u.verified, u.created_at, u.updated_at, u.user_slug,
+			array_agg(at.name) AS account_type_names
+		FROM business_kycs AS bk
+		LEFT JOIN users u ON bk.user_id = u.id
+		LEFT JOIN user_account_types uat ON uat.user_id = u.id
+		LEFT JOIN account_types at ON at.id = uat.account_type_id
+		WHERE bk.subdomain = $1
+		GROUP BY bk.id, u.id
+	`
+
+	row := u.Conn.QueryRowContext(ctx, query, domain)
+
+	var bkyc BusinessKyc
+	var user User
+	var rawTypes pq.StringArray
+	var profileImg sql.NullString
+
+	err := row.Scan(
+		&bkyc.ID,
+		&bkyc.UserID,
+		&bkyc.Subdomain,
+		&bkyc.Verified,
+		&bkyc.UpdatedAt,
+		&bkyc.CreatedAt,
+		&bkyc.StateID,
+		&bkyc.LgaID,
+		&bkyc.ShopBanner,
+		&bkyc.PlanID,
+		&bkyc.KeyBonus,
+		&bkyc.DisplayName,
+		&bkyc.Description,
+		&bkyc.CountryID,
+		&bkyc.Address,
+		&bkyc.BusinessRegistered,
+
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+		&user.Phone,
+		&user.Password,
+		&profileImg,
+		&user.Verified,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.UserSlug,
+		&rawTypes,
+	)
+
+	if err != nil {
+		log.Printf("%v", err)
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no business found with subdomain %s", domain)
+		}
+
+		log.Printf("%v", err)
+		return nil, fmt.Errorf("error retrieving business by subdomain: %w", err)
+	}
+
+	if profileImg.Valid {
+		user.ProfileImg = wrapperspb.String(profileImg.String)
+	}
+
+	for _, name := range rawTypes {
+		if strings.TrimSpace(name) != "" {
+			user.AccountTypes = append(user.AccountTypes, AccountType{Name: name})
+		}
+	}
+
+	// You might want to assign user to bkyc.User or similar if your model expects that.
+
+	return &bkyc, nil
+
+}
+
 type RatingSummary struct {
 	FiveStar      int32   `json:"five_star"`
 	FourStar      int32   `json:"four_star"`
@@ -3197,9 +3280,14 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 			b.address,
 			b.cac_number,
 			b.display_name,
+			b.user_id,
 			b.description,
 			b.key_bonus,
 			b.business_registered,
+			b.subdomain,
+			b.country_id,
+			b.state_id,
+			b.lga_id,
 
 			-- user fields
 			u.id, u.email, u.first_name, u.last_name, u.phone,
@@ -3256,9 +3344,14 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 		&bc.Address,
 		&rawCac,
 		&bc.DisplayName,
+		&bc.UserID,
 		&bc.Description,
 		&bc.KeyBonus,
 		&bc.BusinessRegistered,
+		&bc.Subdomain,
+		&bc.StateID,
+		&bc.CountryID,
+		&bc.LgaID,
 
 		// user
 		&u.ID,

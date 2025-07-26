@@ -139,7 +139,7 @@ type UserRating struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	CreatedAt    time.Time `json:"created_at"`
 	RaterDetails User      `json:"rater_details"`
-	RepliesCount int32     `json:"replies_count"` 
+	RepliesCount int32     `json:"replies_count"`
 }
 
 type InventoryRatingReply struct {
@@ -267,9 +267,11 @@ type BusinessKyc struct {
 	Verified   bool `json:"verified"`
 	ActivePlan bool `json:"active_plan"`
 
-	ShopBanner string    `json:"shop_banner"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	CreatedAt  time.Time `json:"created_at"`
+	ShopBanner string `json:"shop_banner"`
+
+	Subdomain string    `json:"subdomain"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type RenterKyc struct {

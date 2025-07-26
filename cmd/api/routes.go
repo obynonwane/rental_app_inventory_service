@@ -42,7 +42,7 @@ func (app *Config) routes() http.Handler {
 	mux.Post("/api/v1/premium-partners", app.PremiumPartner)
 	mux.Get("/api/v1/premium-extras", app.GetPremiumUsersExtras)
 
-
+	mux.Get("/api/v1/business-details", app.GetBusinessDetail)
 
 	mux.Get("/api/v1/inventory-rating-replies", app.GetInventoryRatingReplies)
 	mux.Get("/api/v1/user-rating-replies", app.GetUserRatingReplies)

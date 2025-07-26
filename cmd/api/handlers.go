@@ -1484,6 +1484,18 @@ func (s *InventoryServer) SearchInventory(
 		req.UserId = userWithSlug.ID
 	}
 
+	if req.Subdomain != "" {
+		userWithSubdomain, err := s.Models.GetBusinessBySubdomain(ctx, req.Subdomain)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal,
+				"failed to search inventories: %v", err)
+		}
+
+		log.Println(userWithSubdomain, "THE USER WITH SUBDOMAIN")
+
+		req.UserId = userWithSubdomain.UserID
+	}
+
 	// 2) Build your data.SearchPayload (Limit/Offset as strings)
 	param := &data.SearchPayload{
 		CountryID:       req.CountryId,

@@ -1219,7 +1219,7 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 			bk.description, bk.country_id, bk.address, bk.business_registered, bk.industries,
 			u.id, u.email, u.first_name, u.last_name, u.phone, u.password,
 			u.profile_img, u.verified, u.created_at, u.updated_at, u.user_slug,
-			array_agg(at.name) AS account_type_names
+			array_agg(COALESCE(at.name, '')) AS account_type_names
 		FROM business_kycs AS bk
 		LEFT JOIN users u ON bk.user_id = u.id
 		LEFT JOIN user_account_types uat ON uat.user_id = u.id
@@ -1234,6 +1234,8 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 	var user User
 	var rawTypes pq.StringArray
 	var profileImg sql.NullString
+	var rawShopBanner sql.NullString
+	var rawKeyBonus sql.NullString
 
 	err := row.Scan(
 		&bkyc.ID,
@@ -1244,9 +1246,9 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 		&bkyc.CreatedAt,
 		&bkyc.StateID,
 		&bkyc.LgaID,
-		&bkyc.ShopBanner,
+		&rawShopBanner,
 		&bkyc.PlanID,
-		&bkyc.KeyBonus,
+		&rawKeyBonus,
 		&bkyc.DisplayName,
 		&bkyc.Description,
 		&bkyc.CountryID,
@@ -1280,6 +1282,14 @@ func (u *PostgresRepository) GetBusinessBySubdomain(ctx context.Context, domain 
 
 	if profileImg.Valid {
 		user.ProfileImg = wrapperspb.String(profileImg.String)
+	}
+
+	if rawShopBanner.Valid {
+		bkyc.ShopBanner = rawShopBanner.String
+	}
+
+	if rawKeyBonus.Valid {
+		bkyc.KeyBonus = rawKeyBonus.String
 	}
 
 	for _, name := range rawTypes {
@@ -1737,6 +1747,7 @@ type SearchPayload struct {
 	UserID          string `json:"user_id"`
 	ProductPurpose  string `json:"product_purpose"`
 	UserSlug        string `json:"user_slug"`
+	Subdomain       string `json:"subdomain"`
 }
 
 type GetCategoryByIDPayload struct {

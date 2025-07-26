@@ -883,6 +883,53 @@ func (app *Config) GetUserDetail(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+func (app *Config) GetBusinessDetail(w http.ResponseWriter, r *http.Request) {
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	domain := r.FormValue("domain")
+
+	// get the user detail
+	user, err := app.Repo.GetBusinessBySubdomain(timeoutCtx, domain)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	// get the user rating and count
+	userRatingCount, err := app.Repo.UserRatingAndCount(timeoutCtx, user.ID)
+	if err != nil {
+		log.Fatal("error retrieving user rating: %w", err)
+	}
+
+	// get the total user listing
+	totalListingCount, err := app.Repo.TotalUserInventoryListing(timeoutCtx, user.ID)
+	if err != nil {
+		log.Fatal("error retrieving total listing  for user: %w", err)
+	}
+
+	businessKyc, err := app.Repo.GetBusinessKycByUserID(timeoutCtx, user.UserID)
+	if err != nil {
+		log.Fatal("error retrieving business kyc: %w", err)
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "data retrieved succesfully",
+		Data: map[string]any{
+			"user":              user,
+			"userRatingCount":   userRatingCount,
+			"totalListingCount": totalListingCount,
+			"kycs":              businessKyc,
+		},
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
 
 func (app *Config) GetInventoryRatingReplies(w http.ResponseWriter, r *http.Request) {
 

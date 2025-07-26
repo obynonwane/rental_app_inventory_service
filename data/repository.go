@@ -55,4 +55,5 @@ type Repository interface {
 
 	GetInventoryRatingReplies(ctx context.Context, ratingID string) ([]*InventoryRatingReply, error)
 	GetUserRatingReplies(ctx context.Context, ratingID string) ([]*UserRatingReply, error)
+	GetBusinessBySubdomain(ctx context.Context, domain string) (*BusinessKyc, error)
 }

@@ -1053,9 +1053,20 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 			log.Fatal("error retrieving total listing  for user: %w", err)
 		}
 
+		// get the business kyc
+		bkyc, err := i.Models.GetBusinessKycByUserID(timeoutCtx, user.ID)
+		if err != nil {
+			log.Fatal("error retrieving total listing  for user: %w", err)
+		}
+
+		log.Println(bkyc.Subdomain, "the subdomain THE KYCS IS HERE")
+
 		log.Println(totalListingCount.Count, "Total Listing")
 		log.Println(user.ID, "USER_ID")
 		return &inventory.InventoryResponseDetail{
+			BusinessKyc: &inventory.BusinessKyc{
+				Subdomain: &bkyc.Subdomain,
+			},
 			Inventory: &inventory.Inventory{
 
 				Id:             di.ID,
@@ -1101,7 +1112,8 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 					ProfileImg:     &user.ProfileImg.Value,
 					CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
 					UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
-					UserSlug:       &user.UserSlug},
+					UserSlug:       &user.UserSlug,
+				},
 
 				StateSlug:       di.StateSlug,
 				CountrySlug:     di.CountrySlug,

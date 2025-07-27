@@ -1059,13 +1059,10 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 			log.Fatal("error retrieving total listing  for user: %w", err)
 		}
 
-		log.Println(bkyc.Subdomain, "the subdomain THE KYCS IS HERE")
-
-		log.Println(totalListingCount.Count, "Total Listing")
-		log.Println(user.ID, "USER_ID")
 		return &inventory.InventoryResponseDetail{
 			BusinessKyc: &inventory.BusinessKyc{
-				Subdomain: &bkyc.Subdomain,
+				Subdomain:  &bkyc.Subdomain,
+				ActivePlan: bkyc.ActivePlan,
 			},
 			Inventory: &inventory.Inventory{
 

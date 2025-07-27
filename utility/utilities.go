@@ -26,7 +26,7 @@ func GenerateSlug(name string) (string, string) {
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(now.UnixNano())), 0)
 	id := ulid.MustNew(ulid.Timestamp(now), entropy)
 
-	slug := fmt.Sprintf("%s-%s", base, id.String())
+	slug := fmt.Sprintf("%s-%s.html", base, id.String())
 	return slug, id.String()
 }
 

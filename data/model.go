@@ -522,7 +522,13 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 				updated_at, 
 				created_at`
 
-	var inventory Inventory
+	var (
+		inventory      Inventory
+		userTags       sql.NullString
+		itemCondition  sql.NullString
+		itemUsageGuide sql.NullString
+		itemIncluded   sql.NullString
+	)
 	err := tx.QueryRowContext(ctx,
 		query,
 		name,
@@ -582,15 +588,38 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		&inventory.Negotiable,
 		&inventory.PrimaryImage,
 		&inventory.MinimumPrice,
-		&inventory.UsageGuide,
-		&inventory.Condition,
-		&inventory.Included,
+		&itemUsageGuide,
+		&itemCondition,
+		&itemIncluded,
 
 		&inventory.CreatedAt,
 		&inventory.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create inventory: %w", err)
+	}
+
+	if userTags.Valid {
+		inventory.Tags = wrapperspb.String(userTags.String)
+	} else {
+		inventory.Tags = &wrapperspb.StringValue{}
+	}
+
+	if itemCondition.Valid {
+		inventory.Condition = wrapperspb.String(itemCondition.String)
+	} else {
+		inventory.Condition = &wrapperspb.StringValue{}
+	}
+
+	if itemUsageGuide.Valid {
+		inventory.UsageGuide = wrapperspb.String(itemUsageGuide.String)
+	} else {
+		inventory.UsageGuide = &wrapperspb.StringValue{}
+	}
+	if itemIncluded.Valid {
+		inventory.Included = wrapperspb.String(itemIncluded.String)
+	} else {
+		inventory.Included = &wrapperspb.StringValue{}
 	}
 
 	// Insert image URLs into a separate table

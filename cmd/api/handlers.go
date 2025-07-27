@@ -900,13 +900,13 @@ func (app *Config) GetBusinessDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the user rating and count
-	userRatingCount, err := app.Repo.UserRatingAndCount(timeoutCtx, user.ID)
+	userRatingCount, err := app.Repo.UserRatingAndCount(timeoutCtx, user.UserID)
 	if err != nil {
 		log.Fatal("error retrieving user rating: %w", err)
 	}
 
 	// get the total user listing
-	totalListingCount, err := app.Repo.TotalUserInventoryListing(timeoutCtx, user.ID)
+	totalListingCount, err := app.Repo.TotalUserInventoryListing(timeoutCtx, user.UserID)
 	if err != nil {
 		log.Fatal("error retrieving total listing  for user: %w", err)
 	}

@@ -2961,6 +2961,7 @@ func (r *PostgresRepository) TotalUserInventoryListing(ctx context.Context, user
 		return TotalUserListingReturn{}, nil
 	}
 
+	log.Println(count, "the count")
 	return TotalUserListingReturn{
 		Count: count,
 	}, nil

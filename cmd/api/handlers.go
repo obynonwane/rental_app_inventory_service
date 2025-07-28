@@ -1053,17 +1053,20 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 			log.Fatal("error retrieving total listing  for user: %w", err)
 		}
 
+		var businessKyc *inventory.BusinessKyc
 		// get the business kyc
 		bkyc, err := i.Models.GetBusinessKycByUserID(timeoutCtx, user.ID)
 		if err != nil {
-			log.Fatal("error retrieving total listing  for user: %w", err)
+			log.Println("no business kyc found or error retrieving it:", err)
+		} else if bkyc != nil {
+			businessKyc = &inventory.BusinessKyc{
+				Subdomain:  &bkyc.Subdomain,
+				ActivePlan: bkyc.ActivePlan,
+			}
 		}
 
 		return &inventory.InventoryResponseDetail{
-			BusinessKyc: &inventory.BusinessKyc{
-				Subdomain:  &bkyc.Subdomain,
-				ActivePlan: bkyc.ActivePlan,
-			},
+			BusinessKyc: businessKyc,
 			Inventory: &inventory.Inventory{
 
 				Id:             di.ID,

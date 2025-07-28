@@ -940,8 +940,12 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+
+			log.Println(err, "THE ERROR IN MODEL 0")
 			return nil, fmt.Errorf("no inventory found")
 		}
+
+		log.Println(err, "THE ERROR IN MODEL 1")
 		return nil, fmt.Errorf("error retrieving inventory: %w", err)
 	}
 
@@ -987,6 +991,8 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	imgRows, err := u.Conn.QueryContext(ctx, imgSQL, pq.Array([]string{inventory.ID}))
 	if err != nil {
+
+		log.Println(err, "THE ERROR IN MODEL 2")
 		return nil, fmt.Errorf("select images: %w", err)
 	}
 	defer imgRows.Close()
@@ -999,6 +1005,8 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 			&img.ID, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
 			&createdAt, &updatedAt,
 		); err != nil {
+
+			log.Println(err, "THE ERROR IN MODEL 3")
 			return nil, fmt.Errorf("scan image: %w", err)
 		}
 
@@ -1024,6 +1032,8 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 
 	err = u.Conn.QueryRowContext(ctx, ratingSQL, inventory.ID).Scan(&avgRating, &totalRatings)
 	if err != nil {
+
+		log.Println(err, "THE ERROR IN MODEL 4")
 		return nil, fmt.Errorf("select average rating and count: %w", err)
 	}
 
@@ -3441,6 +3451,7 @@ func (r *PostgresRepository) GetBusinessKycByUserID(ctx context.Context, userID 
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Printf("no BusinessKyc for user %q", userID)
 			return nil, fmt.Errorf("no BusinessKyc for user %q", userID)
 		}
 		return nil, fmt.Errorf("query BusinessKyc: %w", err)

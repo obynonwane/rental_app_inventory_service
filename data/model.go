@@ -2688,9 +2688,9 @@ func (r *PostgresRepository) GetPremiumPartners(ctx context.Context, p SearchPre
 		argIdx     = 1
 	)
 
-	conditions = []string{
-		"bk.active_plan = true",
-	}
+	// conditions = []string{
+	// 	"bk.active_plan = true",
+	// }
 
 	if p.Text != "" {
 		conditions = append(conditions, fmt.Sprintf(`

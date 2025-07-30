@@ -124,6 +124,8 @@ github.com/obynonwane/rental-service-proto v0.0.0-20250726100648-d3c84a3db16c h1
 github.com/obynonwane/rental-service-proto v0.0.0-20250726100648-d3c84a3db16c/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/obynonwane/rental-service-proto v0.0.0-20250727095504-67a7738f8010 h1:Rumvh/sVC/ZjvVPEYG8f1tasIuNp1Z/PIxbP24KoFPQ=
 github.com/obynonwane/rental-service-proto v0.0.0-20250727095504-67a7738f8010/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
+github.com/obynonwane/rental-service-proto v0.0.0-20250730213259-97bb81c038ab h1:60g8hniX86bSQNSqoO57PU3LqoYMG/993AW/WZC/U8U=
+github.com/obynonwane/rental-service-proto v0.0.0-20250730213259-97bb81c038ab/go.mod h1:pqb4O+AOCWtb/hx41nlenapts8Zl9fTFVbXJWDACFBY=
 github.com/oklog/ulid/v2 v2.1.1 h1:suPZ4ARWLOJLegGFiZZ1dFAkqzhMjL3J1TzI+5wHz8s=
 github.com/oklog/ulid/v2 v2.1.1/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
 github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=

@@ -1061,7 +1061,7 @@ func (i *InventoryServer) GetInventoryByID(ctx context.Context, req *inventory.S
 		} else if bkyc != nil {
 			businessKyc = &inventory.BusinessKyc{
 				Subdomain:  &bkyc.Subdomain,
-				ActivePlan: bkyc.ActivePlan,
+				ActivePlan: &bkyc.ActivePlan,
 			}
 		}
 

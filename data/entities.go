@@ -330,3 +330,23 @@ type SavedInventory struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type UserSubscription struct {
+	ID                   string    `json:"id"` // uuid
+	UserID               string    `json:"user_id"`
+	PlanID               string    `json:"plan_id"`
+	BillingCycle         string    `json:"billing_cycle"`
+	ReceiptNumber        string    `json:"receipt_number"`
+	Reference            string    `json:"reference"`
+	StartDate            time.Time `json:"start_date"` // subscription end date
+	EndDate              time.Time `json:"end_date"`   // subscription end date
+	NumberOfDays         int32     `json:"number_of_days"`
+	Active               bool      `json:"active"`
+	AvailablePostings    int32     `json:"available_postings"`
+	Amount               float64   `json:"amount"`
+	SubscriptionCanceled bool      `json:"subscription_canceled"`
+	Status               string    `json:"status"`      // subscription status e.g. active, past_due, free
+	NumberDays           int       `json:"number_days"` // number of days remaining
+	CreatedAt            time.Time `json:"created_at"`  // record creation timestamp
+	UpdatedAt            time.Time `json:"updated_at"`  // record last update timestamp
+}

@@ -633,6 +633,22 @@ func (u *PostgresRepository) CreateInventory(req *CreateInventoryParams) error {
 		}
 	}
 
+	// Reduce the posting count on userSubscription
+	if inventory.UserId != "" {
+		updateUserSubscription := `
+		UPDATE user_subscriptions
+		SET available_postings = available_postings - 1
+		WHERE user_id = $1`
+
+		_, err = tx.ExecContext(ctx, updateUserSubscription, inventory.UserId)
+		if err != nil {
+			log.Printf("%v", err)
+		}
+
+	} else {
+		log.Printf("%s", "User ID cant be found to Update Usersubscriptions Table")
+	}
+
 	return nil
 }
 

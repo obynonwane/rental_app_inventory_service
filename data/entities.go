@@ -209,6 +209,7 @@ type InventoryBooking struct {
 	RentalDuration    float64   `json:"rental_duration"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+	PrimaryImage      string    `json:"primary_image"`
 }
 
 type InventorySale struct {
@@ -223,6 +224,7 @@ type InventorySale struct {
 	PaymentStatus     string    `json:"payment_status"` // pending, paid, failed
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+	PrimaryImage      string    `json:"primary_image"`
 }
 
 type Chat struct {

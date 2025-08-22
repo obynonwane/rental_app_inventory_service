@@ -24,7 +24,9 @@ func (app *Config) routes() http.Handler {
 
 	mux.Get("/api/v1/getusers", app.GetUsers)
 	mux.Post("/api/v1/create-booking", app.CreateBooking)
+	mux.Post("/api/v1/my-booking", app.MyBookings)
 	mux.Post("/api/v1/create-order", app.CreatePrurchaseOrder)
+	mux.Post("/api/v1/my-purchase", app.MyPurchase)
 	mux.Post("/api/v1/submit-chat", app.SubmitChat)
 	mux.Post("/api/v1/chat-history", app.GetChatHistory)
 	mux.Post("/api/v1/chat-list", app.GetChatList)

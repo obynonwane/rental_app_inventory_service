@@ -3687,3 +3687,199 @@ func (u *PostgresRepository) GetUserRatingReplies(ctx context.Context, ratingID 
 	// Even if len(replies)==0, this returns [](*InventoryRatingReply){}, not nil
 	return replies, nil
 }
+
+type MyBookingCollection struct {
+	Data       []InventoryBooking
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+type MyBookingPayload struct {
+	UserId string `json:"user_id"`
+	Page   int32  `json:"page"`
+	Limit  int32  `json:"limit"`
+}
+
+func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBookingPayload) (*MyBookingCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM inventory_bookings WHERE renter_id = $1"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+	query := `
+		SELECT 
+			ivb.id, 
+			ivb.inventory_id, 
+			ivb.renter_id, 
+			ivb.owner_id, 
+			ivb.start_date, 
+			ivb.start_time, 
+			ivb.end_date, 
+			ivb.end_time, 
+			ivb.offer_price_per_unit, 
+			ivb.total_amount, 
+			ivb.security_deposit, 
+			ivb.quantity, 
+			ivb.status, 
+			ivb.payment_status, 
+			ivb.rental_type, 
+			ivb.rental_duration, 
+			ivb.created_at, 
+			ivb.updated_at,
+			iv.primary_image
+		FROM inventory_bookings ivb
+		JOIN inventories iv ON ivb.inventory_id = iv.id
+		WHERE ivb.renter_id = $1
+		ORDER BY ivb.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.UserId, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bookings []InventoryBooking
+
+	for rows.Next() {
+
+		var b InventoryBooking
+		if err := rows.Scan(
+			&b.ID,
+			&b.InventoryID,
+			&b.RenterID,
+			&b.OwnerID,
+			&b.StartDate,
+			&b.StartTime,
+			&b.EndDate,
+			&b.EndTime,
+			&b.OfferPricePerUnit,
+			&b.TotalAmount,
+			&b.SecurityDeposit,
+			&b.Quantity,
+			&b.Status,
+			&b.PaymentStatus,
+			&b.RentalType,
+			&b.RentalDuration,
+			&b.CreatedAt,
+			&b.UpdatedAt,
+			&b.PrimaryImage,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		bookings = append(bookings, b)
+	}
+
+	return &MyBookingCollection{
+		Data:       bookings,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+}
+
+type MyPurchasePayload struct {
+	UserId string `json:"user_id"`
+	Page   int32  `json:"page"`
+	Limit  int32  `json:"limit"`
+}
+
+type MyPurchaseCollection struct {
+	Data       []InventorySale
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) GetMyPuchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM inventory_sales WHERE buyer_id = $1"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+	query := `
+		SELECT 
+			ivs.id, 
+			ivs.inventory_id, 
+			ivs.seller_id, 
+			ivs.buyer_id, 
+			ivs.offer_price_per_unit, 
+			ivs.quantity, 
+			ivs.total_amount, 
+			ivs.status, 
+			ivs.payment_status,
+			ivs.created_at, 
+			ivs.updated_at,
+			iv.primary_image
+		FROM inventory_sales ivs
+		JOIN inventories iv ON ivs.inventory_id = iv.id
+		WHERE ivs.buyer_id = $1
+		ORDER BY ivs.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.UserId, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var purchases []InventorySale
+
+	for rows.Next() {
+
+		var p InventorySale
+		if err := rows.Scan(
+			&p.ID,
+			&p.InventoryID,
+			&p.SellerID,
+			&p.BuyerID,
+			&p.OfferPricePerUnit,
+			&p.Quantity,
+			&p.TotalAmount,
+			&p.Status,
+			&p.PaymentStatus,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+			&p.PrimaryImage,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		purchases = append(purchases, p)
+	}
+
+	return &MyPurchaseCollection{
+		Data:       purchases,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+}

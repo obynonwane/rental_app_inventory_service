@@ -56,4 +56,7 @@ type Repository interface {
 	GetInventoryRatingReplies(ctx context.Context, ratingID string) ([]*InventoryRatingReply, error)
 	GetUserRatingReplies(ctx context.Context, ratingID string) ([]*UserRatingReply, error)
 	GetBusinessBySubdomain(ctx context.Context, domain string) (*BusinessKyc, error)
+
+	GetMyBookings(ctx context.Context, detail MyBookingPayload) (*MyBookingCollection, error)
+	GetMyPuchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error)
 }

@@ -46,6 +46,7 @@ type Repository interface {
 	TotalUserInventoryListing(ctx context.Context, userID string) (TotalUserListingReturn, error)
 	SaveInventory(ctx context.Context, userId, inventoryId string) error
 	DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error
+	DeleteInventory(ctx context.Context, detail DeleteInventoryPayload) error
 	DeleteChat(ctx context.Context, id, userId string) error
 	GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error)
 	GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error)
@@ -58,5 +59,8 @@ type Repository interface {
 	GetBusinessBySubdomain(ctx context.Context, domain string) (*BusinessKyc, error)
 
 	GetMyBookings(ctx context.Context, detail MyBookingPayload) (*MyBookingCollection, error)
-	GetMyPuchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error)
+	GetMyPurchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error)
+	GetMyInventories(ctx context.Context, detail MyInventoryPayload) (*MyInventoryCollection, error)
+
+	GetMySubscriptionHistory(ctx context.Context, detail MySubscriptionHistoryPayload) (*MySubscriptionHistoryCollection, error)
 }

@@ -352,3 +352,22 @@ type UserSubscription struct {
 	CreatedAt            time.Time `json:"created_at"`  // record creation timestamp
 	UpdatedAt            time.Time `json:"updated_at"`  // record last update timestamp
 }
+
+type UserSubscriptionHistory struct {
+	ID                string     `json:"id"`
+	UserID            string     `json:"user_id"`
+	PlanID            *string    `json:"plan_id,omitempty"`
+	BillingCycle      string     `json:"billing_cycle"`
+	ReceiptNumber     string     `json:"receipt_number"`
+	Reference         string     `json:"reference"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	StartDate         time.Time  `json:"start_date"`
+	EndDate           *time.Time `json:"end_date,omitempty"`
+	NumberOfDays      *int       `json:"number_of_days,omitempty"`
+	AvailablePostings *int       `json:"available_postings,omitempty"`
+	Active            bool       `json:"active"`
+	Payload           *string    `json:"payload,omitempty"`
+	Amount            *float64   `json:"amount,omitempty"`
+	Plan              Plan       `json:"plan"`
+}

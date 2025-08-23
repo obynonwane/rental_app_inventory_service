@@ -25,6 +25,8 @@ func (app *Config) routes() http.Handler {
 	mux.Get("/api/v1/getusers", app.GetUsers)
 	mux.Post("/api/v1/create-booking", app.CreateBooking)
 	mux.Post("/api/v1/my-booking", app.MyBookings)
+	mux.Post("/api/v1/my-inventories", app.MyInventories)
+	mux.Post("/api/v1/my-subscription-history", app.MySubscriptionHistory)
 	mux.Post("/api/v1/create-order", app.CreatePrurchaseOrder)
 	mux.Post("/api/v1/my-purchase", app.MyPurchase)
 	mux.Post("/api/v1/submit-chat", app.SubmitChat)
@@ -35,7 +37,8 @@ func (app *Config) routes() http.Handler {
 	mux.Post("/api/v1/profile-image", app.UploadProfileImage)
 	mux.Post("/api/v1/shop-banner", app.UploadBanner)
 	mux.Post("/api/v1/save-inventory", app.SaveInventory)
-	mux.Post("/api/v1/delete-inventory", app.DeleteSaveInventory)
+	mux.Post("/api/v1/delete-saved-inventory", app.DeleteSaveInventory)
+	mux.Post("/api/v1/delete-inventory", app.DeleteInventory)
 	mux.Post("/api/v1/delete-chat", app.DeleteChat)
 	mux.Post("/api/v1/user-saved-inventory", app.GetUserSavedInventory)
 

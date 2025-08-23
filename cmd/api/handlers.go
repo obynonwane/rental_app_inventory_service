@@ -1714,6 +1714,46 @@ func (app *Config) DeleteSaveInventory(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+func (app *Config) DeleteInventory(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("GOT HERE FOR TESTING")
+	//extract the request body
+	var requestPayload data.DeleteInventoryPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+	_, err = app.Repo.GetInventoryByID(timeoutCtx, requestPayload.InventoryId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			app.errorJSON(w, errors.New("no record found"), nil, http.StatusBadRequest)
+			return
+		}
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	err = app.Repo.DeleteInventory(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "inventory deleted successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
 
 type GetUserSavedInventoryReq struct {
 	UserId string `json:"user_id"`
@@ -1745,6 +1785,37 @@ func (app *Config) GetUserSavedInventory(w http.ResponseWriter, r *http.Request)
 		StatusCode: http.StatusAccepted,
 		Message:    "saved inventory retrieved successfully",
 		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) MyInventories(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.MyInventoryPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		log.Printf("%v", err)
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	bookings, err := app.Repo.GetMyInventories(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+	var payload = jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "inventories retrieved successfully",
+		Data:       bookings,
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

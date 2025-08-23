@@ -171,7 +171,7 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 		var catCount int32
 
 		// execute query to count in inventories where category_id matches category.ID
-		catCountQuery := `SELECT COUNT(*) FROM inventories WHERE category_id = $1`
+		catCountQuery := `SELECT COUNT(*) FROM inventories WHERE category_id = $1 AND deleted = false`
 
 		catRow := u.Conn.QueryRowContext(ctx, catCountQuery, category.ID)
 
@@ -187,7 +187,7 @@ func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, e
 
 			var subCatCount int32
 			// execute query to count in inventories where category_id matches category.ID
-			subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1`
+			subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1 AND deleted = false`
 
 			subCatRow := u.Conn.QueryRowContext(ctx, subcatCountQuery, subcategory.ID)
 
@@ -281,7 +281,7 @@ func (u *PostgresRepository) GetcategorySubcategories(ctx context.Context, id st
 
 		var subCatCount int32
 		// execute query to count in inventories where category_id matches category.ID
-		subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1`
+		subcatCountQuery := `SELECT COUNT(*) FROM inventories WHERE subcategory_id = $1 AND deleted = false`
 
 		subCatRow := u.Conn.QueryRowContext(ctx, subcatCountQuery, subcategory.ID)
 
@@ -666,7 +666,7 @@ func (u *PostgresRepository) GetInventoryByID(ctx context.Context, inventory_id 
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image
 		         FROM inventories 
-		         WHERE id = $1`
+		         WHERE id = $1 AND deleted = false`
 		args = append(args, inventory_id)
 
 	default:
@@ -879,7 +879,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
 		         tags, condition, usage_guide, included FROM inventories 
-		         WHERE id = $1 OR slug = $2`
+		         WHERE deleted = false AND (id = $1 OR slug = $2)`
 		args = append(args, inventory_id, slug_ulid)
 
 	case inventory_id != "":
@@ -887,7 +887,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
 		         tags, condition, usage_guide, included FROM inventories 
-		         WHERE id = $1`
+		         WHERE id = $1 AND deleted = false`
 		args = append(args, inventory_id)
 
 	case slug_ulid != "":
@@ -895,7 +895,7 @@ func (u *PostgresRepository) GetInventoryByIDOrSlug(ctx context.Context, slug_ul
 				 country_id, state_id, lga_id, slug, ulid, offer_price, state_slug, country_slug, lga_slug, category_slug, subcategory_slug,
 				 product_purpose, quantity, is_available, rental_duration, security_deposit, minimum_price, metadata, negotiable, primary_image,
 		         tags, condition, usage_guide, included FROM inventories 
-		         WHERE slug = $1`
+		         WHERE slug = $1 AND deleted = false`
 		args = append(args, slug_ulid)
 
 	default:
@@ -1843,6 +1843,10 @@ func (r *PostgresRepository) SearchInventory(
 		args       []interface{}
 		argIdx     = 1
 	)
+
+	// Always filter out deleted inventories
+	conditions = append(conditions, "l.deleted = false")
+	
 
 	if p.CountryID != "" {
 		conditions = append(conditions, fmt.Sprintf("l.country_id = $%d", argIdx))
@@ -2923,7 +2927,7 @@ func (u *PostgresRepository) GetPremiumUsersExtras(ctx context.Context) (Premium
 	var storeCount int64
 	var vStoreCount int64
 	// execute query to count in inventories where category_id matches category.ID
-	invQuery := `SELECT COUNT(*) FROM inventories`
+	invQuery := `SELECT COUNT(*) FROM inventories where deleted = false`
 	invRow := u.Conn.QueryRowContext(ctx, invQuery)
 	if err := invRow.Scan(&invCatCount); err != nil {
 		log.Println("Error scanning row inventory count:", err)
@@ -2981,7 +2985,7 @@ type TotalUserListingReturn struct {
 func (r *PostgresRepository) TotalUserInventoryListing(ctx context.Context, userID string) (TotalUserListingReturn, error) {
 	var count int32
 
-	countQuery := `SELECT  COALESCE(COUNT(*), 0) FROM inventories where user_id = $1`
+	countQuery := `SELECT  COALESCE(COUNT(*), 0) FROM inventories where user_id = $1 AND deleted = false`
 	err := r.Conn.QueryRowContext(ctx, countQuery, userID).Scan(&count)
 	if err != nil {
 		return TotalUserListingReturn{}, nil
@@ -2994,7 +2998,7 @@ func (r *PostgresRepository) TotalUserInventoryListing(ctx context.Context, user
 }
 
 func (r *PostgresRepository) GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error) {
-	query := `SELECT id, created_at, updated_at FROM inventories WHERE id = $1`
+	query := `SELECT id, created_at, updated_at FROM inventories WHERE id = $1 AND deleted = false`
 
 	log.Println(inventoryId, "the inventory")
 
@@ -3060,6 +3064,33 @@ func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId
 
 	count, _ := res.RowsAffected()
 	log.Printf("Deleted %d saved_inventory record(s)", count)
+
+	return nil
+}
+
+type DeleteInventoryPayload struct {
+	UserId      string `json:"user_id"`
+	InventoryId string `json:"inventory_id" binding:"required"`
+}
+
+func (r *PostgresRepository) DeleteInventory(ctx context.Context, detail DeleteInventoryPayload) error {
+	result, err := r.Conn.ExecContext(ctx, `
+		UPDATE inventories
+		SET deleted = true,
+		    deleted_at = NOW()
+		WHERE user_id = $1 AND id = $2
+	`, detail.UserId, detail.InventoryId)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("no inventory found for user %s with id %s", detail.UserId, detail.InventoryId)
+	}
 
 	return nil
 }
@@ -3806,7 +3837,7 @@ type MyPurchaseCollection struct {
 	Limit      int32
 }
 
-func (u *PostgresRepository) GetMyPuchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error) {
+func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error) {
 
 	offset := (detail.Page - 1) * detail.Limit // Calculate offset
 
@@ -3878,6 +3909,239 @@ func (u *PostgresRepository) GetMyPuchases(ctx context.Context, detail MyPurchas
 
 	return &MyPurchaseCollection{
 		Data:       purchases,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+}
+
+type MyInventoryPayload struct {
+	UserId string `json:"user_id"`
+	Page   int32  `json:"page"`
+	Limit  int32  `json:"limit"`
+}
+
+type MyInventoryCollection struct {
+	Data       []Inventory
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) GetMyInventories(ctx context.Context, detail MyInventoryPayload) (*MyInventoryCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM inventories WHERE user_id = $1 AND deleted = false"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+
+	query := `SELECT 
+				id, 
+				name, 
+				description, 
+				user_id, 
+				category_id, 
+				subcategory_id, 
+				promoted, 
+				deactivated, 
+				country_id, 
+				state_id, 
+				lga_id, 
+				slug, 
+				ulid, 
+				offer_price, 
+				state_slug, 
+				country_slug, 
+				lga_slug, 
+				category_slug, 
+				subcategory_slug,
+				product_purpose, 
+				quantity, 
+				is_available, 
+				rental_duration, 
+				security_deposit, 
+				minimum_price, 
+				metadata, 
+				negotiable, 
+				primary_image,
+				created_at,
+				updated_at
+		    FROM inventories 
+		    WHERE user_id = $1 AND deleted = false
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.UserId, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var inventories []Inventory
+
+	for rows.Next() {
+
+		var inventory Inventory
+		if err := rows.Scan(
+			&inventory.ID,
+			&inventory.Name,
+			&inventory.Description,
+			&inventory.UserId,
+			&inventory.CategoryId,
+			&inventory.SubcategoryId,
+			&inventory.Promoted,
+			&inventory.Deactivated,
+			&inventory.CountryId,
+			&inventory.StateId,
+			&inventory.LgaId,
+			&inventory.Slug,
+			&inventory.Ulid,
+			&inventory.OfferPrice,
+			&inventory.StateSlug,
+			&inventory.CountrySlug,
+			&inventory.LgaSlug,
+			&inventory.CategorySlug,
+			&inventory.SubcategorySlug,
+			&inventory.ProductPurpose,
+			&inventory.Quantity,
+			&inventory.IsAvailable,
+			&inventory.RentalDuration,
+			&inventory.SecurityDeposit,
+			&inventory.MinimumPrice,
+			&inventory.Metadata,
+			&inventory.Negotiable,
+			&inventory.PrimaryImage,
+			&inventory.CreatedAt,
+			&inventory.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		inventories = append(inventories, inventory)
+	}
+
+	return &MyInventoryCollection{
+		Data:       inventories,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+}
+
+type MySubscriptionHistoryPayload struct {
+	UserId string `json:"user_id"`
+	Page   int32  `json:"page"`
+	Limit  int32  `json:"limit"`
+}
+
+type MySubscriptionHistoryCollection struct {
+	Data       []UserSubscriptionHistory
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) GetMySubscriptionHistory(ctx context.Context, detail MySubscriptionHistoryPayload) (*MySubscriptionHistoryCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM user_subscriptions WHERE user_id = $1"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+
+	query := `SELECT 
+				ush.id, 
+				ush.user_id, 
+				ush.plan_id,
+				ush.billing_cycle,
+				ush.receipt_number,
+				ush.reference, 
+				ush.created_at,
+				ush.updated_at,
+				ush.start_date,
+				ush.end_date, 
+				ush.number_of_days,
+				ush.available_postings,
+				ush.active,
+				ush.amount,
+				p.id,
+				p.name,
+				p.created_at,
+				p.updated_at,
+				p.annual_price,
+				p.monthly_price
+		    FROM user_subscription_histories ush
+		    LEFT JOIN plans p ON ush.plan_id = p.id
+		    WHERE ush.user_id = $1
+			ORDER BY ush.created_at DESC
+			LIMIT $2 OFFSET $3`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.UserId, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subscriptions []UserSubscriptionHistory
+
+	for rows.Next() {
+
+		var subscription UserSubscriptionHistory
+		var plan Plan
+		if err := rows.Scan(
+			&subscription.ID,
+			&subscription.UserID,
+			&subscription.PlanID,
+			&subscription.BillingCycle,
+			&subscription.ReceiptNumber,
+			&subscription.Reference,
+			&subscription.CreatedAt,
+			&subscription.UpdatedAt,
+			&subscription.StartDate,
+			&subscription.EndDate,
+			&subscription.NumberOfDays,
+			&subscription.AvailablePostings,
+			&subscription.Active,
+			&subscription.Amount,
+			&plan.ID,
+			&plan.Name,
+			&plan.CreatedAt,
+			&plan.UpdatedAt,
+			&plan.AnnualPrice,
+			&plan.MonthlyPrice,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		subscription.Plan = plan
+		subscriptions = append(subscriptions, subscription)
+	}
+
+	return &MySubscriptionHistoryCollection{
+		Data:       subscriptions,
 		TotalCount: totalRows,
 		Offset:     offset,
 		Limit:      detail.Limit,

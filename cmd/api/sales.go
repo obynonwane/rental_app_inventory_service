@@ -112,7 +112,7 @@ func (app *Config) MyPurchase(w http.ResponseWriter, r *http.Request) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
 	defer cancel()
 
-	bookings, err := app.Repo.GetMyPuchases(timeoutCtx, requestPayload)
+	bookings, err := app.Repo.GetMyPurchases(timeoutCtx, requestPayload)
 	if err != nil {
 		app.errorJSON(w, err, nil)
 		return
@@ -120,7 +120,37 @@ func (app *Config) MyPurchase(w http.ResponseWriter, r *http.Request) {
 	var payload = jsonResponse{
 		Error:      false,
 		StatusCode: http.StatusAccepted,
-		Message:    "pruchases retrieved successfully",
+		Message:    "purchases retrieved successfully",
+		Data:       bookings,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+func (app *Config) MySubscriptionHistory(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.MySubscriptionHistoryPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		log.Printf("%v", err)
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	bookings, err := app.Repo.GetMySubscriptionHistory(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+	var payload = jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "subscription retrieved successfully",
 		Data:       bookings,
 	}
 

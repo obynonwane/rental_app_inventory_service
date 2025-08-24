@@ -1386,7 +1386,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	// Query to fetch ratings, rater details, and replies
 	query := `
 		SELECT 
-			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at, ir.report_count, ir_helpful_count,
+			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at, ir.helpful_count, ir.report_count,
 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
 			COALESCE(
 				JSON_AGG(
@@ -1428,6 +1428,8 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			ratingWithRater InventoryRating
 			repliesJSON     string
 			imgNull         sql.NullString
+			helpfulCount    int64 // scan DB ints here
+			reportCount     int64
 		)
 
 		err := rows.Scan(
@@ -1439,8 +1441,8 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			&ratingWithRater.Comment,
 			&ratingWithRater.UpdatedAt,
 			&ratingWithRater.CreatedAt,
-			&ratingWithRater.ReportCount,
-			&ratingWithRater.HelpfulCount,
+			&helpfulCount,
+			&reportCount,
 			&ratingWithRater.RaterDetails.ID,
 			&ratingWithRater.RaterDetails.FirstName,
 			&ratingWithRater.RaterDetails.LastName,
@@ -1453,11 +1455,15 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			return nil, 0, err
 		}
 
+		ratingWithRater.HelpfulCount = wrapperspb.Int64(helpfulCount)
+		ratingWithRater.ReportCount = wrapperspb.Int64(reportCount)
+
 		if imgNull.Valid {
 			ratingWithRater.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)
 		} else {
 			ratingWithRater.RaterDetails.ProfileImg = nil
 		}
+
 		// Parse replies JSON into a slice of replies
 		var replies []InventoryRatingReply
 		if err := json.Unmarshal([]byte(repliesJSON), &replies); err != nil {
@@ -1577,7 +1583,7 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 
 	query := `
 		SELECT
-			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at, ur.report_count, ur_helpful_count,
+			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at, ur.helpful_count, ur.report_count,
 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
 			COUNT(urr.id) AS replies_count
 		FROM user_ratings ur
@@ -1599,8 +1605,17 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 	var ratings []*UserRating
 
 	for rows.Next() {
-		var rating UserRating
-		var imgNull sql.NullString
+		// var rating UserRating
+		// var imgNull sql.NullString
+		// var reportCount int64
+		// var helpfulCount int64
+
+		var (
+			rating       UserRating
+			imgNull      sql.NullString
+			helpfulCount int64 // scan DB ints here
+			reportCount  int64
+		)
 
 		err := rows.Scan(
 			&rating.ID,
@@ -1610,8 +1625,10 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 			&rating.Comment,
 			&rating.UpdatedAt,
 			&rating.CreatedAt,
-			&rating.ReportCount,
-			&rating.HelpfulCount,
+			// &rating.HelpfulCount,
+			// &rating.ReportCount,
+			&helpfulCount,
+			&reportCount,
 			&rating.RaterDetails.ID,
 			&rating.RaterDetails.FirstName,
 			&rating.RaterDetails.LastName,
@@ -1624,6 +1641,9 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 			log.Println("Error scanning rating:", err)
 			return nil, 0, err
 		}
+
+		rating.HelpfulCount = wrapperspb.Int64(helpfulCount)
+		rating.ReportCount = wrapperspb.Int64(reportCount)
 
 		if imgNull.Valid {
 			rating.RaterDetails.ProfileImg = wrapperspb.String(imgNull.String)

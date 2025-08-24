@@ -128,22 +128,22 @@ type InventoryRating struct {
 	RaterDetails User                   `json:"rater_details"`
 	Replies      []InventoryRatingReply `json:"replies"`
 	RepliesCount int32
-	HelpfulCount int32 `json:"helpful_count"`
-	ReportCount  int32 `json:"report_count"`
+	HelpfulCount *wrapperspb.Int64Value `json:"helpful_count"`
+	ReportCount  *wrapperspb.Int64Value `json:"report_count"`
 }
 
 type UserRating struct {
-	ID           string    `json:"id"`
-	UserId       string    `json:"user_id"`
-	RaterId      string    `json:"rater_id"`
-	Rating       int32     `json:"rating"`
-	Comment      string    `json:"comment"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	RaterDetails User      `json:"rater_details"`
-	RepliesCount int32     `json:"replies_count"`
-	HelpfulCount int32     `json:"helpful_count"`
-	ReportCount  int32     `json:"report_count"`
+	ID           string                 `json:"id"`
+	UserId       string                 `json:"user_id"`
+	RaterId      string                 `json:"rater_id"`
+	Rating       int32                  `json:"rating"`
+	Comment      string                 `json:"comment"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	CreatedAt    time.Time              `json:"created_at"`
+	RaterDetails User                   `json:"rater_details"`
+	RepliesCount int32                  `json:"replies_count"`
+	HelpfulCount *wrapperspb.Int64Value `json:"helpful_count"`
+	ReportCount  *wrapperspb.Int64Value `json:"report_count"`
 }
 
 type InventoryRatingReply struct {

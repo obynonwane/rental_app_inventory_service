@@ -128,6 +128,8 @@ type InventoryRating struct {
 	RaterDetails User                   `json:"rater_details"`
 	Replies      []InventoryRatingReply `json:"replies"`
 	RepliesCount int32
+	HelpfulCount int32 `json:"helpful_count"`
+	ReportCount  int32 `json:"report_count"`
 }
 
 type UserRating struct {
@@ -140,6 +142,8 @@ type UserRating struct {
 	CreatedAt    time.Time `json:"created_at"`
 	RaterDetails User      `json:"rater_details"`
 	RepliesCount int32     `json:"replies_count"`
+	HelpfulCount int32     `json:"helpful_count"`
+	ReportCount  int32     `json:"report_count"`
 }
 
 type InventoryRatingReply struct {
@@ -370,4 +374,36 @@ type UserSubscriptionHistory struct {
 	Payload           *string    `json:"payload,omitempty"`
 	Amount            *float64   `json:"amount,omitempty"`
 	Plan              Plan       `json:"plan"`
+}
+
+type TrackReportedUserRating struct {
+	ID        string    `json:"id"`                  // UUID primary key
+	UserID    string    `json:"user_id"`             // Foreign key to users
+	RatingID  *string   `json:"rating_id,omitempty"` // Nullable foreign key to user_ratings
+	CreatedAt time.Time `json:"created_at"`          // Timestamp of creation
+	UpdatedAt time.Time `json:"updated_at"`          // Timestamp of last update
+}
+
+type TrackHelpfulUserRating struct {
+	ID        string    `json:"id"`                  // UUID primary key
+	UserID    string    `json:"user_id"`             // Foreign key to users
+	RatingID  *string   `json:"rating_id,omitempty"` // Nullable foreign key to user_ratings
+	CreatedAt time.Time `json:"created_at"`          // Timestamp of creation
+	UpdatedAt time.Time `json:"updated_at"`          // Timestamp of last update
+}
+
+type TrackReportedInventoryRating struct {
+	ID        string    `json:"id"`                  // UUID primary key
+	UserID    string    `json:"user_id"`             // Foreign key to users
+	RatingID  *string   `json:"rating_id,omitempty"` // Nullable foreign key to user_ratings
+	CreatedAt time.Time `json:"created_at"`          // Timestamp of creation
+	UpdatedAt time.Time `json:"updated_at"`          // Timestamp of last update
+}
+
+type TrackHelpfulInventoryRating struct {
+	ID        string    `json:"id"`                  // UUID primary key
+	UserID    string    `json:"user_id"`             // Foreign key to users
+	RatingID  *string   `json:"rating_id,omitempty"` // Nullable foreign key to user_ratings
+	CreatedAt time.Time `json:"created_at"`          // Timestamp of creation
+	UpdatedAt time.Time `json:"updated_at"`          // Timestamp of last update
 }

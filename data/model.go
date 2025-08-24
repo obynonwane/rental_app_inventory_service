@@ -1386,7 +1386,7 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	// Query to fetch ratings, rater details, and replies
 	query := `
 		SELECT 
-			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at,
+			ir.id, ir.inventory_id, ir.user_id, ir.rater_id, ir.rating, ir.comment, ir.updated_at, ir.created_at, ir.report_count, ir_helpful_count,
 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
 			COALESCE(
 				JSON_AGG(
@@ -1439,6 +1439,8 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 			&ratingWithRater.Comment,
 			&ratingWithRater.UpdatedAt,
 			&ratingWithRater.CreatedAt,
+			&ratingWithRater.ReportCount,
+			&ratingWithRater.HelpfulCount,
 			&ratingWithRater.RaterDetails.ID,
 			&ratingWithRater.RaterDetails.FirstName,
 			&ratingWithRater.RaterDetails.LastName,
@@ -1575,7 +1577,7 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 
 	query := `
 		SELECT
-			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at,
+			ur.id, ur.user_id, ur.rater_id, ur.rating, ur.comment, ur.updated_at, ur.created_at, ur.report_count, ur_helpful_count,
 			u.id AS rater_id, u.first_name, u.last_name, u.email, u.phone, u.profile_img,
 			COUNT(urr.id) AS replies_count
 		FROM user_ratings ur
@@ -1608,6 +1610,8 @@ func (u *PostgresRepository) GetUserRatings(ctx context.Context, id string, page
 			&rating.Comment,
 			&rating.UpdatedAt,
 			&rating.CreatedAt,
+			&rating.ReportCount,
+			&rating.HelpfulCount,
 			&rating.RaterDetails.ID,
 			&rating.RaterDetails.FirstName,
 			&rating.RaterDetails.LastName,
@@ -1846,7 +1850,6 @@ func (r *PostgresRepository) SearchInventory(
 
 	// Always filter out deleted inventories
 	conditions = append(conditions, "l.deleted = false")
-	
 
 	if p.CountryID != "" {
 		conditions = append(conditions, fmt.Sprintf("l.country_id = $%d", argIdx))
@@ -4146,4 +4149,202 @@ func (u *PostgresRepository) GetMySubscriptionHistory(ctx context.Context, detai
 		Offset:     offset,
 		Limit:      detail.Limit,
 	}, nil
+}
+
+type RatingReportHelpfulPayload struct {
+	UserId   string `json:"user_id"`
+	RatingId string `json:"rating_id" binding:"required"`
+}
+
+func (r *PostgresRepository) GetReportedUserRatingByUser(ctx context.Context, detail RatingReportHelpfulPayload) (int32, error) {
+
+	var count int32
+	query := `SELECT COUNT(*) FROM track_reported_user_ratings WHERE user_id = $1 AND rating_id = $2`
+
+	err := r.Conn.QueryRowContext(ctx, query, detail.UserId, detail.RatingId).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error checking if user already reported rating%w", err)
+	}
+
+	return count, nil
+}
+func (u *PostgresRepository) ReportUserRating(ctx context.Context, detail RatingReportHelpfulPayload) error {
+
+	// check if user have reported this rating
+	count, err := u.GetReportedUserRatingByUser(ctx, detail)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+
+		updateUserRating := `
+		UPDATE user_ratings
+		SET report_count = report_count + 1
+		WHERE id = $1`
+
+		res, err := u.Conn.ExecContext(ctx, updateUserRating, detail.RatingId)
+		if err != nil {
+			log.Printf("%v", err)
+			return err
+		}
+		rows, _ := res.RowsAffected()
+		if rows == 0 {
+			log.Printf("no rows updated for id=%v", detail.RatingId)
+		}
+
+		query := `INSERT INTO track_reported_user_ratings (user_id, rating_id, updated_at, created_at) VALUES ($1, $2, NOW(), NOW())`
+		_, err = u.Conn.ExecContext(ctx, query, detail.UserId, detail.RatingId)
+		if err != nil {
+			log.Println("THE ERROR CREATING TRACK_REPORT_USER_RATING", err)
+			return fmt.Errorf("failed to update report: %v", err)
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func (r *PostgresRepository) GetHelpfulUserRatingByUser(ctx context.Context, detail RatingReportHelpfulPayload) (int32, error) {
+
+	var count int32
+	query := `SELECT COUNT(*) FROM track_helpful_user_ratings WHERE user_id = $1 AND rating_id = $2`
+
+	err := r.Conn.QueryRowContext(ctx, query, detail.UserId, detail.RatingId).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error checking if user already reported rating%w", err)
+	}
+
+	return count, nil
+}
+
+func (u *PostgresRepository) UserRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error {
+
+	// check if user have reported this rating
+	count, err := u.GetHelpfulUserRatingByUser(ctx, detail)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+
+		updateHelpfulRating := `
+		UPDATE user_ratings
+		SET helpful_count = helpful_count + 1
+		WHERE id = $1`
+
+		res, err := u.Conn.ExecContext(ctx, updateHelpfulRating, detail.RatingId)
+		if err != nil {
+			log.Printf("%v", err)
+			return err
+		}
+		rows, _ := res.RowsAffected()
+		if rows == 0 {
+			log.Printf("no rows updated for id=%v", detail.RatingId)
+		}
+
+		query := `INSERT INTO track_helpful_user_ratings (user_id, rating_id, updated_at, created_at) VALUES ($1, $2, NOW(), NOW())`
+		_, err = u.Conn.ExecContext(ctx, query, detail.UserId, detail.RatingId)
+		if err != nil {
+			log.Println("THE ERROR CREATING TRACK_REPORT_USER_RATING", err)
+			return fmt.Errorf("failed to update report: %v", err)
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func (r *PostgresRepository) GetHelpfulInventoryRatingByUser(ctx context.Context, detail RatingReportHelpfulPayload) (int32, error) {
+
+	var count int32
+	query := `SELECT COUNT(*) FROM track_helpful_inventory_ratings WHERE user_id = $1 AND rating_id = $2`
+
+	err := r.Conn.QueryRowContext(ctx, query, detail.UserId, detail.RatingId).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error checking if user already reported rating%w", err)
+	}
+
+	return count, nil
+}
+func (u *PostgresRepository) InventoryRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error {
+
+	// check if user have reported this rating
+	count, err := u.GetReportedUserRatingByUser(ctx, detail)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+
+		updateUserRating := `
+		UPDATE inventory_ratings
+		SET helpful_count = helpful_count + 1
+		WHERE id = $1`
+
+		res, err := u.Conn.ExecContext(ctx, updateUserRating, detail.RatingId)
+		if err != nil {
+			log.Printf("%v", err)
+			return err
+		}
+		rows, _ := res.RowsAffected()
+		if rows == 0 {
+			log.Printf("no rows updated for id=%v", detail.RatingId)
+		}
+
+		query := `INSERT INTO track_helpful_inventory_ratings (user_id, rating_id, updated_at, created_at) VALUES ($1, $2, NOW(), NOW())`
+		_, err = u.Conn.ExecContext(ctx, query, detail.UserId, detail.RatingId)
+		if err != nil {
+			log.Println("THE ERROR CREATING TRACK_REPORT_USER_RATING", err)
+			return fmt.Errorf("failed to update report: %v", err)
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func (r *PostgresRepository) GetReportedInventoryRatingByUser(ctx context.Context, detail RatingReportHelpfulPayload) (int32, error) {
+
+	var count int32
+	query := `SELECT COUNT(*) FROM track_reported_inventory_ratings WHERE user_id = $1 AND rating_id = $2`
+
+	err := r.Conn.QueryRowContext(ctx, query, detail.UserId, detail.RatingId).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error checking if user already reported rating%w", err)
+	}
+
+	return count, nil
+}
+func (u *PostgresRepository) ReportInventoryRating(ctx context.Context, detail RatingReportHelpfulPayload) error {
+
+	// check if user have reported this rating
+	count, err := u.GetReportedUserRatingByUser(ctx, detail)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+
+		updateUserRating := `
+		UPDATE inventory_ratings
+		SET report_count = report_count + 1
+		WHERE id = $1`
+
+		res, err := u.Conn.ExecContext(ctx, updateUserRating, detail.RatingId)
+		if err != nil {
+			log.Printf("%v", err)
+			return err
+		}
+		rows, _ := res.RowsAffected()
+		if rows == 0 {
+			log.Printf("no rows updated for id=%v", detail.RatingId)
+		}
+
+		query := `INSERT INTO track_reported_inventory_ratings (user_id, rating_id, updated_at, created_at) VALUES ($1, $2, NOW(), NOW())`
+		_, err = u.Conn.ExecContext(ctx, query, detail.UserId, detail.RatingId)
+		if err != nil {
+			log.Println("THE ERROR CREATING TRACK_REPORT_USER_RATING", err)
+			return fmt.Errorf("failed to update report: %v", err)
+		}
+		return nil
+	}
+
+	return nil
 }

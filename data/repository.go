@@ -63,4 +63,10 @@ type Repository interface {
 	GetMyInventories(ctx context.Context, detail MyInventoryPayload) (*MyInventoryCollection, error)
 
 	GetMySubscriptionHistory(ctx context.Context, detail MySubscriptionHistoryPayload) (*MySubscriptionHistoryCollection, error)
+
+	ReportUserRating(ctx context.Context, detail RatingReportHelpfulPayload) error
+	UserRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error
+
+	ReportInventoryRating(ctx context.Context, detail RatingReportHelpfulPayload) error
+	InventoryRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error
 }

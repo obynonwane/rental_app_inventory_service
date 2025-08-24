@@ -1202,6 +1202,8 @@ func (i *InventoryServer) GetUserRatings(ctx context.Context, req *inventory.Get
 				RaterId:        singleRating.RaterId,
 				Rating:         singleRating.Rating,
 				Comment:        singleRating.Comment,
+				HelpfulCount:   singleRating.HelpfulCount,
+				ReportCount:    singleRating.ReportCount,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
 				Rater: &inventory.User{
@@ -1287,6 +1289,8 @@ func (i *InventoryServer) GetInventoryRatings(ctx context.Context, req *inventor
 				Comment:        singleRating.Comment,
 				CreatedAtHuman: formatTimestamp(timestamppb.New(singleRating.CreatedAt)),
 				UpdatedAtHuman: formatTimestamp(timestamppb.New(singleRating.UpdatedAt)),
+				ReportCount:    singleRating.ReportCount,
+				HelpfulCount:   singleRating.HelpfulCount,
 				Rater: &inventory.User{
 					Id:         singleRating.RaterId,
 					FirstName:  singleRating.RaterDetails.FirstName,
@@ -1714,9 +1718,9 @@ func (app *Config) DeleteSaveInventory(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
 func (app *Config) DeleteInventory(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("GOT HERE FOR TESTING")
 	//extract the request body
 	var requestPayload data.DeleteInventoryPayload
 	err := app.readJSON(w, r, &requestPayload)
@@ -1816,6 +1820,128 @@ func (app *Config) MyInventories(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusAccepted,
 		Message:    "inventories retrieved successfully",
 		Data:       bookings,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) ReportUserRating(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.RatingReportHelpfulPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+	err = app.Repo.ReportUserRating(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "recorded successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) ReportInventoryRating(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.RatingReportHelpfulPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+	err = app.Repo.ReportInventoryRating(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "recorded successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) UserRatingHelpful(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.RatingReportHelpfulPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	err = app.Repo.UserRatingHelpful(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "recorded successfully",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) InventoryRatingHelpful(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.RatingReportHelpfulPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// get the inventory
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	err = app.Repo.InventoryRatingHelpful(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "recorded successfully",
 	}
 
 	app.writeJSON(w, http.StatusAccepted, payload)

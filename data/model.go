@@ -3791,9 +3791,41 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			ivb.rental_duration, 
 			ivb.created_at, 
 			ivb.updated_at,
-			iv.primary_image
+			iv.name,
+			iv.description,
+			iv.primary_image,
+			iv.category_id,
+			iv.subcategory_id,
+			iv.slug,
+			u.first_name,
+			u.last_name,
+			u.email,
+			u.phone,
+			u.id,
+			u.user_slug,
+			ct.id,
+			ct.name,
+			ct.code,
+			st.id,
+			st.name,
+			st.state_slug,
+			cat.id,
+			cat.name,
+			cat.category_slug,
+			sub.id,
+			sub.name,
+			sub.subcategory_slug,
+			lga.id,
+			lga.name,
+			lga.lga_slug
 		FROM inventory_bookings ivb
 		JOIN inventories iv ON ivb.inventory_id = iv.id
+		JOIN users u ON u.id = iv.user_id
+		JOIN countries ct ON ct.id = iv.country_id
+		JOIN states st ON st.id = iv.state_id
+		JOIN lgas lga ON lga.id = iv.lga_id
+		JOIN categories cat ON cat.id = iv.category_id
+		JOIN subcategories sub ON sub.id = iv.subcategory_id
 		WHERE ivb.renter_id = $1
 		ORDER BY ivb.created_at DESC
 		LIMIT $2 OFFSET $3
@@ -3812,6 +3844,20 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 	for rows.Next() {
 
 		var b InventoryBooking
+		var i Inventory
+		var u User
+		var ct Country
+		var st State
+		var cat Category
+		var sub Subcategory
+		var lga Lga
+
+		// Handle nullable DB fields
+		var description sql.NullString
+		var primaryImage sql.NullString
+		var category sql.NullString
+		var subcategory sql.NullString
+
 		if err := rows.Scan(
 			&b.ID,
 			&b.InventoryID,
@@ -3831,10 +3877,60 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			&b.RentalDuration,
 			&b.CreatedAt,
 			&b.UpdatedAt,
-			&b.PrimaryImage,
+			&i.Name,
+			&description,
+			&primaryImage,
+			&category,
+			&subcategory,
+			&i.Slug,
+			&u.FirstName,
+			&u.LastName,
+			&u.Email,
+			&u.Phone,
+			&u.ID,
+			&u.UserSlug,
+			&ct.ID,
+			&ct.Name,
+			&ct.Code,
+			&st.ID,
+			&st.Name,
+			&st.StateSlug,
+			&cat.ID,
+			&cat.Name,
+			&cat.CategorySlug,
+			&sub.ID,
+			&sub.Name,
+			&sub.SubCategorySlug,
+			&lga.ID,
+			&lga.Name,
+			&lga.LgaSlug,
 		); err != nil {
 			return nil, err
 		}
+
+		// Assign nullable fields safely
+		if description.Valid {
+			i.Description = description.String
+		}
+		if primaryImage.Valid {
+			i.PrimaryImage = primaryImage.String
+		}
+		if category.Valid {
+			i.CategoryId = category.String
+		}
+		if subcategory.Valid {
+			i.SubcategoryId = subcategory.String
+		}
+
+		// Assign inventory and seller info to purchase
+		b.Inventory = i
+		b.User = u
+		b.Country = ct
+		b.State = st
+		b.Category = cat
+		b.Subcategory = sub
+		b.Lga = lga
+
 		// add this booking to slice
 		bookings = append(bookings, b)
 	}

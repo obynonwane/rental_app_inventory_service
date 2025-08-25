@@ -50,7 +50,7 @@ type Repository interface {
 	DeleteChat(ctx context.Context, id, userId string) error
 	GetSavedInventoryByUserIDAndInventoryID(ctx context.Context, userId, inventoryId string) (*SavedInventory, error)
 	GetInventoryWithSuppliedID(ctx context.Context, inventoryId string) (*Inventory, error)
-	GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error)
+	GetUserSavedInventory(ctx context.Context, userId string) ([]*SavedInventory, error)
 	GetBusinessKycByUserID(ctx context.Context, userID string) (*BusinessKyc, error)
 	GetRenterKycByUserID(ctx context.Context, userID string) (*RenterKyc, error)
 

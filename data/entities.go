@@ -344,11 +344,18 @@ type IdentityType struct {
 }
 
 type SavedInventory struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	InventoryID string    `json:"inventory_id"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string      `json:"id"`
+	UserID      string      `json:"user_id"`
+	InventoryID string      `json:"inventory_id"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	CreatedAt   time.Time   `json:"created_at"`
+	Inventory   Inventory   `json:"inventory"`
+	User        User        `json:"user"`
+	Country     Country     `json:"country"`
+	State       State       `json:"state"`
+	Lga         Lga         `json:"lga"`
+	Category    Category    `json:"category"`
+	Subcategory Subcategory `json:"subcategory"`
 }
 
 type UserSubscription struct {

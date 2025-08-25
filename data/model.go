@@ -3861,21 +3861,15 @@ type MyPurchaseCollection struct {
 }
 
 func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error) {
+	offset := (detail.Page - 1) * detail.Limit
 
-	offset := (detail.Page - 1) * detail.Limit // Calculate offset
-
-	var totalRows int32 // Variable to hold the total count
-
-	// Query to count total rows
+	var totalRows int32
 	countQuery := "SELECT COUNT(*) FROM inventory_sales WHERE buyer_id = $1"
-
 	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
-
 	if err := row.Scan(&totalRows); err != nil {
 		return nil, err
 	}
 
-	// Query user bookings
 	query := `
 		SELECT 
 			ivs.id, 
@@ -3889,17 +3883,47 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			ivs.payment_status,
 			ivs.created_at, 
 			ivs.updated_at,
-			iv.primary_image
+			iv.name,
+			iv.description,
+			iv.primary_image,
+			iv.category_id,
+			iv.subcategory_id,
+			iv.slug,
+			u.first_name,
+			u.last_name,
+			u.email,
+			u.phone,
+			u.id,
+			u.user_slug,
+			ct.id,
+			ct.name,
+			ct.code,
+			st.id,
+			st.name,
+			st.state_slug,
+			cat.id,
+			cat.name,
+			cat.category_slug,
+			sub.id,
+			sub.name,
+			sub.subcategory_slug,
+			lga.id,
+			lga.name,
+			lga.lga_slug
 		FROM inventory_sales ivs
 		JOIN inventories iv ON ivs.inventory_id = iv.id
+		JOIN users u ON u.id = iv.user_id
+		JOIN countries ct ON ct.id = iv.country_id
+		JOIN states st ON st.id = iv.state_id
+		JOIN lgas lga ON lga.id = iv.lga_id
+		JOIN categories cat ON cat.id = iv.category_id
+		JOIN subcategories sub ON sub.id = iv.subcategory_id
 		WHERE ivs.buyer_id = $1
 		ORDER BY ivs.created_at DESC
 		LIMIT $2 OFFSET $3
 	`
 
-	// stmt.QueryRowContext
 	rows, err := u.Conn.QueryContext(ctx, query, detail.UserId, detail.Limit, offset)
-
 	if err != nil {
 		return nil, err
 	}
@@ -3908,9 +3932,22 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 	var purchases []InventorySale
 
 	for rows.Next() {
-
 		var p InventorySale
-		if err := rows.Scan(
+		var i Inventory
+		var u User
+		var ct Country
+		var st State
+		var cat Category
+		var sub Subcategory
+		var lga Lga
+
+		// Handle nullable DB fields
+		var description sql.NullString
+		var primaryImage sql.NullString
+		var category sql.NullString
+		var subcategory sql.NullString
+
+		err := rows.Scan(
 			&p.ID,
 			&p.InventoryID,
 			&p.SellerID,
@@ -3922,12 +3959,66 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			&p.PaymentStatus,
 			&p.CreatedAt,
 			&p.UpdatedAt,
-			&p.PrimaryImage,
-		); err != nil {
+			&i.Name,
+			&description,
+			&primaryImage,
+			&category,
+			&subcategory,
+			&i.Slug,
+			&u.FirstName,
+			&u.LastName,
+			&u.Email,
+			&u.Phone,
+			&u.ID,
+			&u.UserSlug,
+			&ct.ID,
+			&ct.Name,
+			&ct.Code,
+			&st.ID,
+			&st.Name,
+			&st.StateSlug,
+			&cat.ID,
+			&cat.Name,
+			&cat.CategorySlug,
+			&sub.ID,
+			&sub.Name,
+			&sub.SubCategorySlug,
+			&lga.ID,
+			&lga.Name,
+			&lga.LgaSlug,
+		)
+		if err != nil {
 			return nil, err
 		}
-		// add this booking to slice
+
+		// Assign nullable fields safely
+		if description.Valid {
+			i.Description = description.String
+		}
+		if primaryImage.Valid {
+			i.PrimaryImage = primaryImage.String
+		}
+		if category.Valid {
+			i.CategoryId = category.String
+		}
+		if subcategory.Valid {
+			i.SubcategoryId = subcategory.String
+		}
+
+		// Assign inventory and seller info to purchase
+		p.Inventory = i
+		p.User = u
+		p.Country = ct
+		p.State = st
+		p.Category = cat
+		p.Subcategory = sub
+		p.Lga = lga
+
 		purchases = append(purchases, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return &MyPurchaseCollection{

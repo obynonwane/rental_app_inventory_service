@@ -3118,43 +3118,60 @@ func (r *PostgresRepository) DeleteInventory(ctx context.Context, detail DeleteI
 	return nil
 }
 
-func (r *PostgresRepository) GetUserSavedInventory(ctx context.Context, userId string) ([]*Inventory, error) {
+func (r *PostgresRepository) GetUserSavedInventory(ctx context.Context, userId string) ([]*SavedInventory, error) {
 
-	log.Println("The UserID", userId)
 	query := `SELECT 
-					i.id, 
-					i.name, 
-					i.description, 
-					i.user_id, 
-					i.category_id, 
-					i.subcategory_id, 
-					i.promoted, 
-					i.deactivated, 
-					i.updated_at, 
-					i.created_at, 
-					i.country_id, 
-					i.state_id, 
-					i.lga_id, 
-					i.slug, 
-					i.ulid, 
-					i.offer_price, 
-					i.state_slug, 
-					i.country_slug, 
-					i.lga_slug, 
-					i.category_slug, 
-					i.subcategory_slug, 
-					i.product_purpose, 
-					i.quantity, 
-					i.is_available, 
-					i.rental_duration, 
-					i.security_deposit, 
-					i.minimum_price, 
-					i.metadata, 
-					i.negotiable, 
-					i.primary_image
-				FROM saved_inventories si
-				JOIN inventories i ON si.inventory_id = i.id
-				WHERE si.user_id = $1`
+					si.id, 
+					si.user_id, 
+					si.inventory_id, 
+					si.created_at, 
+					si.updated_at, 
+					iv.id,
+					iv.name,
+					iv.tags,
+					iv.description,
+					iv.primary_image,
+					iv.category_id,
+					iv.subcategory_id,
+					iv.slug,
+					u.first_name,
+					u.last_name,
+					u.email,
+					u.phone,
+					u.id,
+					u.user_slug,
+					ct.id,
+					ct.name,
+					ct.code,
+					st.id,
+					st.name,
+					st.state_slug,
+					cat.id,
+					cat.name,
+					cat.category_slug,
+					cat.description,
+					cat.icon_class,
+					cat.created_at,
+					cat.updated_at,
+					sub.id,
+					sub.name,
+					sub.subcategory_slug,
+					sub.description,
+					sub.icon_class,
+					sub.created_at,
+					sub.updated_at,
+					lga.id,
+					lga.name,
+					lga.lga_slug
+					FROM saved_inventories si
+					JOIN inventories iv ON si.inventory_id = iv.id
+					JOIN users u ON u.id = iv.user_id
+					JOIN countries ct ON ct.id = iv.country_id
+					JOIN states st ON st.id = iv.state_id
+					JOIN lgas lga ON lga.id = iv.lga_id
+					JOIN categories cat ON cat.id = iv.category_id
+					JOIN subcategories sub ON sub.id = iv.subcategory_id
+					WHERE si.user_id = $1`
 
 	rows, err := r.Conn.QueryContext(ctx, query, userId)
 	if err != nil {
@@ -3162,50 +3179,105 @@ func (r *PostgresRepository) GetUserSavedInventory(ctx context.Context, userId s
 	}
 	defer rows.Close()
 
-	var inventories []*Inventory
+	var saved_inventories []*SavedInventory
 
 	for rows.Next() {
-		var inv Inventory
+		var siv SavedInventory
+		var i Inventory
+		var u User
+		var ct Country
+		var st State
+		var cat Category
+		var sub Subcategory
+		var lga Lga
+
+		// Handle nullable DB fields
+		var description sql.NullString
+		var primaryImage sql.NullString
+		var category sql.NullString
+		var subcategory sql.NullString
+		var tags sql.NullString
+
 		err := rows.Scan(
-			&inv.ID,
-			&inv.Name,
-			&inv.Description,
-			&inv.UserId,
-			&inv.CategoryId,
-			&inv.SubcategoryId,
-			&inv.Promoted,
-			&inv.Deactivated,
-			&inv.UpdatedAt,
-			&inv.CreatedAt,
-			&inv.CategoryId,
-			&inv.StateId,
-			&inv.LgaId,
-			&inv.Slug,
-			&inv.Ulid,
-			&inv.OfferPrice,
-			&inv.StateSlug,
-			&inv.CountrySlug,
-			&inv.LgaSlug,
-			&inv.CategorySlug,
-			&inv.SubcategorySlug,
-			&inv.ProductPurpose,
-			&inv.Quantity,
-			&inv.IsAvailable,
-			&inv.RentalDuration,
-			&inv.SecurityDeposit,
-			&inv.MinimumPrice,
-			&inv.Metadata,
-			&inv.Negotiable,
-			&inv.PrimaryImage,
+			&siv.ID,
+			&siv.UserID,
+			&siv.InventoryID,
+			&siv.CreatedAt,
+			&siv.UpdatedAt,
+			&i.ID,
+			&i.Name,
+			&tags,
+			&description,
+			&primaryImage,
+			&category,
+			&subcategory,
+			&i.Slug,
+			&u.FirstName,
+			&u.LastName,
+			&u.Email,
+			&u.Phone,
+			&u.ID,
+			&u.UserSlug,
+			&ct.ID,
+			&ct.Name,
+			&ct.Code,
+			&st.ID,
+			&st.Name,
+			&st.StateSlug,
+			&cat.ID,
+			&cat.Name,
+			&cat.CategorySlug,
+			&cat.Description,
+			&cat.IconClass,
+			&cat.CreatedAt,
+			&cat.UpdatedAt,
+			&sub.ID,
+			&sub.Name,
+			&sub.SubCategorySlug,
+			&sub.Description,
+			&sub.IconClass,
+			&sub.CreatedAt,
+			&sub.UpdatedAt,
+			&lga.ID,
+			&lga.Name,
+			&lga.LgaSlug,
 		)
 		if err != nil {
 			log.Println("Error scanning inventory:", err)
 			continue
 		}
-		inventories = append(inventories, &inv)
+
+		// Assign nullable fields safely
+		if description.Valid {
+			i.Description = description.String
+		}
+		if primaryImage.Valid {
+			i.PrimaryImage = primaryImage.String
+		}
+		if category.Valid {
+			i.CategoryId = category.String
+		}
+		if subcategory.Valid {
+			i.SubcategoryId = subcategory.String
+		}
+		if tags.Valid {
+			i.Tags = wrapperspb.String(tags.String)
+		}
+
+		// Assign inventory and seller info to purchase
+		siv.Inventory = i
+		siv.User = u
+		siv.Country = ct
+		siv.State = st
+		siv.Category = cat
+		siv.Subcategory = sub
+		siv.Lga = lga
+		siv.Lga = lga
+
+		saved_inventories = append(saved_inventories, &siv)
 	}
 
-	return inventories, nil
+	return saved_inventories, nil
 }
 
 func (r *PostgresRepository) UploadProfileImage(ctx context.Context, img, userId string) error {
@@ -3791,7 +3863,9 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			ivb.rental_duration, 
 			ivb.created_at, 
 			ivb.updated_at,
+			iv.id,
 			iv.name,
+			iv.tags,
 			iv.description,
 			iv.primary_image,
 			iv.category_id,
@@ -3857,6 +3931,7 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		var primaryImage sql.NullString
 		var category sql.NullString
 		var subcategory sql.NullString
+		var tags sql.NullString
 
 		if err := rows.Scan(
 			&b.ID,
@@ -3877,7 +3952,9 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			&b.RentalDuration,
 			&b.CreatedAt,
 			&b.UpdatedAt,
+			&i.ID,
 			&i.Name,
+			&tags,
 			&description,
 			&primaryImage,
 			&category,
@@ -3922,6 +3999,9 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			i.SubcategoryId = subcategory.String
 		}
 
+		if tags.Valid {
+			i.Tags = wrapperspb.String(tags.String)
+		}
 		// Assign inventory and seller info to purchase
 		b.Inventory = i
 		b.User = u
@@ -3979,7 +4059,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			ivs.payment_status,
 			ivs.created_at, 
 			ivs.updated_at,
+			iv.id,
 			iv.name,
+			iv.tags,
 			iv.description,
 			iv.primary_image,
 			iv.category_id,
@@ -4042,6 +4124,7 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		var primaryImage sql.NullString
 		var category sql.NullString
 		var subcategory sql.NullString
+		var tags sql.NullString
 
 		err := rows.Scan(
 			&p.ID,
@@ -4055,7 +4138,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			&p.PaymentStatus,
 			&p.CreatedAt,
 			&p.UpdatedAt,
+			&i.ID,
 			&i.Name,
+			&tags,
 			&description,
 			&primaryImage,
 			&category,
@@ -4099,6 +4184,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		}
 		if subcategory.Valid {
 			i.SubcategoryId = subcategory.String
+		}
+		if tags.Valid {
+			i.Tags = wrapperspb.String(tags.String)
 		}
 
 		// Assign inventory and seller info to purchase

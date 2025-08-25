@@ -214,21 +214,30 @@ type InventoryBooking struct {
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 	PrimaryImage      string    `json:"primary_image"`
+	Inventory         Inventory `json:"inventory"`
+	User              User      `json:"user"`
 }
 
 type InventorySale struct {
-	ID                string    `json:"id"`
-	InventoryID       string    `json:"inventory_id"`
-	SellerID          string    `json:"seller_id"`
-	BuyerID           *string   `json:"buyer_id,omitempty"` // Nullable
-	OfferPricePerUnit float64   `json:"offer_price_per_unit"`
-	Quantity          float64   `json:"quantity"`
-	TotalAmount       float64   `json:"total_amount"`
-	Status            string    `json:"status"`         // available, sold, cancelled
-	PaymentStatus     string    `json:"payment_status"` // pending, paid, failed
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
-	PrimaryImage      string    `json:"primary_image"`
+	ID                string      `json:"id"`
+	InventoryID       string      `json:"inventory_id"`
+	SellerID          string      `json:"seller_id"`
+	BuyerID           *string     `json:"buyer_id,omitempty"` // Nullable
+	OfferPricePerUnit float64     `json:"offer_price_per_unit"`
+	Quantity          float64     `json:"quantity"`
+	TotalAmount       float64     `json:"total_amount"`
+	Status            string      `json:"status"`         // available, sold, cancelled
+	PaymentStatus     string      `json:"payment_status"` // pending, paid, failed
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	PrimaryImage      string      `json:"primary_image"`
+	Inventory         Inventory   `json:"inventory"`
+	User              User        `json:"user"`
+	Country           Country     `json:"country"`
+	State             State       `json:"state"`
+	Lga               Lga         `json:"lga"`
+	Category          Category    `json:"category"`
+	Subcategory       Subcategory `json:"subcategory"`
 }
 
 type Chat struct {

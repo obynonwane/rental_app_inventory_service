@@ -224,31 +224,32 @@ type InventoryBooking struct {
 	Subcategory       Subcategory `json:"subcategory"`
 	BusinessKyc       BusinessKyc `json:"business_kyc"`
 	RenterKyc         RenterKyc   `json:"renter_kyc"`
+	UserSubscription  UserSubscription `json:"user_subscription,omitempty"`
 }
 
 type InventorySale struct {
 	ID                string           `json:"id"`
-	InventoryID       string           `json:"inventory_id"`
-	SellerID          string           `json:"seller_id"`
+	InventoryID       string           `json:"inventory_id,omitempty"`
+	SellerID          string           `json:"seller_id,omitempty"`
 	BuyerID           *string          `json:"buyer_id,omitempty"` // Nullable
-	OfferPricePerUnit float64          `json:"offer_price_per_unit"`
-	Quantity          float64          `json:"quantity"`
-	TotalAmount       float64          `json:"total_amount"`
-	Status            string           `json:"status"`         // available, sold, cancelled
-	PaymentStatus     string           `json:"payment_status"` // pending, paid, failed
-	CreatedAt         time.Time        `json:"created_at"`
-	UpdatedAt         time.Time        `json:"updated_at"`
-	PrimaryImage      string           `json:"primary_image"`
-	Inventory         Inventory        `json:"inventory"`
-	User              User             `json:"user"`
-	Country           Country          `json:"country"`
-	State             State            `json:"state"`
-	Lga               Lga              `json:"lga"`
-	Category          Category         `json:"category"`
-	Subcategory       Subcategory      `json:"subcategory"`
-	BusinessKyc       BusinessKyc      `json:"business_kyc"`
-	RenterKyc         RenterKyc        `json:"renter_kyc"`
-	UserSubscription  UserSubscription `json:"user_subscription"`
+	OfferPricePerUnit float64          `json:"offer_price_per_unit,omitempty"`
+	Quantity          float64          `json:"quantity,omitempty"`
+	TotalAmount       float64          `json:"total_amount,omitempty"`
+	Status            string           `json:"status,omitempty"`         // available, sold, cancelled
+	PaymentStatus     string           `json:"payment_status,omitempty"` // pending, paid, failed
+	CreatedAt         time.Time        `json:"created_at,omitempty"`
+	UpdatedAt         time.Time        `json:"updated_at,omitempty"`
+	PrimaryImage      string           `json:"primary_image,omitempty"`
+	Inventory         Inventory        `json:"inventory,omitempty"`
+	User              User             `json:"user,omitempty"`
+	Country           Country          `json:"country,omitempty"`
+	State             State            `json:"state,omitempty"`
+	Lga               Lga              `json:"lga,omitempty"`
+	Category          Category         `json:"category,omitempty"`
+	Subcategory       Subcategory      `json:"subcategory,omitempty"`
+	BusinessKyc       BusinessKyc      `json:"business_kyc,omitempty"`
+	RenterKyc         RenterKyc        `json:"renter_kyc,omitempty"`
+	UserSubscription  UserSubscription `json:"user_subscription,omitempty"`
 }
 
 type Chat struct {
@@ -366,22 +367,22 @@ type SavedInventory struct {
 
 type UserSubscription struct {
 	ID                   string    `json:"id"` // uuid
-	UserID               string    `json:"user_id"`
-	PlanID               string    `json:"plan_id"`
-	BillingCycle         string    `json:"billing_cycle"`
-	ReceiptNumber        string    `json:"receipt_number"`
-	Reference            string    `json:"reference"`
-	StartDate            time.Time `json:"start_date"` // subscription end date
-	EndDate              time.Time `json:"end_date"`   // subscription end date
-	NumberOfDays         int32     `json:"number_of_days"`
-	Active               bool      `json:"active"`
-	AvailablePostings    int32     `json:"available_postings"`
-	Amount               float64   `json:"amount"`
-	SubscriptionCanceled bool      `json:"subscription_canceled"`
-	Status               string    `json:"status"`      // subscription status e.g. active, past_due, free
-	NumberDays           int       `json:"number_days"` // number of days remaining
-	CreatedAt            time.Time `json:"created_at"`  // record creation timestamp
-	UpdatedAt            time.Time `json:"updated_at"`  // record last update timestamp
+	UserID               string    `json:"user_id,omitempty"`
+	PlanID               string    `json:"plan_id,omitempty"`
+	BillingCycle         string    `json:"billing_cycle,omitempty"`
+	ReceiptNumber        string    `json:"receipt_number,omitempty"`
+	Reference            string    `json:"reference,omitempty"`
+	StartDate            time.Time `json:"start_date,omitempty"` // subscription end date
+	EndDate              time.Time `json:"end_date,omitempty"`   // subscription end date
+	NumberOfDays         int32     `json:"number_of_days,omitempty"`
+	Active               bool      `json:"active,omitempty"`
+	AvailablePostings    int32     `json:"available_postings,omitempty"`
+	Amount               float64   `json:"amount,omitempty"`
+	SubscriptionCanceled bool      `json:"subscription_canceled,omitempty"`
+	Status               string    `json:"status,omitempty"`      // subscription status e.g. active, past_due, free
+	NumberDays           int       `json:"number_days,omitempty"` // number of days remaining
+	CreatedAt            time.Time `json:"created_at,omitempty"`  // record creation timestamp
+	UpdatedAt            time.Time `json:"updated_at,omitempty"`  // record last update timestamp
 }
 
 type UserSubscriptionHistory struct {

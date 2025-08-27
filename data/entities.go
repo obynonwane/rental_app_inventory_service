@@ -95,7 +95,7 @@ type Inventory struct {
 	Included        *wrapperspb.StringValue `json:"included"`
 
 	Images []InventoryImage `json:"images"` // One-to-many relationship
-	User   User             `json:"user"`
+	User   User             `json:"user,omitempty"`
 	// Add the following:
 	Country *Country `json:"country"`
 	State   *State   `json:"state"`
@@ -170,28 +170,28 @@ type UserRatingReply struct {
 
 type Country struct {
 	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Code      string    `json:"code"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name,omitempty"`
+	Code      string    `json:"code,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type State struct {
 	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	StateSlug string    `json:"state_slug"`
-	CountryID string    `json:"country_id"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name,omitempty"`
+	StateSlug string    `json:"state_slug,omitempty"`
+	CountryID string    `json:"country_id,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type Lga struct {
 	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	LgaSlug   string    `json:"lga_slug"`
-	StateID   string    `json:"state_id"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name,omitempty"`
+	LgaSlug   string    `json:"lga_slug,omitempty"`
+	StateID   string    `json:"state_id,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type InventoryBooking struct {
@@ -221,28 +221,33 @@ type InventoryBooking struct {
 	Lga               Lga         `json:"lga"`
 	Category          Category    `json:"category"`
 	Subcategory       Subcategory `json:"subcategory"`
+	BusinessKyc       BusinessKyc `json:"business_kyc"`
+	RenterKyc         RenterKyc   `json:"renter_kyc"`
 }
 
 type InventorySale struct {
-	ID                string      `json:"id"`
-	InventoryID       string      `json:"inventory_id"`
-	SellerID          string      `json:"seller_id"`
-	BuyerID           *string     `json:"buyer_id,omitempty"` // Nullable
-	OfferPricePerUnit float64     `json:"offer_price_per_unit"`
-	Quantity          float64     `json:"quantity"`
-	TotalAmount       float64     `json:"total_amount"`
-	Status            string      `json:"status"`         // available, sold, cancelled
-	PaymentStatus     string      `json:"payment_status"` // pending, paid, failed
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	PrimaryImage      string      `json:"primary_image"`
-	Inventory         Inventory   `json:"inventory"`
-	User              User        `json:"user"`
-	Country           Country     `json:"country"`
-	State             State       `json:"state"`
-	Lga               Lga         `json:"lga"`
-	Category          Category    `json:"category"`
-	Subcategory       Subcategory `json:"subcategory"`
+	ID                string           `json:"id"`
+	InventoryID       string           `json:"inventory_id"`
+	SellerID          string           `json:"seller_id"`
+	BuyerID           *string          `json:"buyer_id,omitempty"` // Nullable
+	OfferPricePerUnit float64          `json:"offer_price_per_unit"`
+	Quantity          float64          `json:"quantity"`
+	TotalAmount       float64          `json:"total_amount"`
+	Status            string           `json:"status"`         // available, sold, cancelled
+	PaymentStatus     string           `json:"payment_status"` // pending, paid, failed
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
+	PrimaryImage      string           `json:"primary_image"`
+	Inventory         Inventory        `json:"inventory"`
+	User              User             `json:"user"`
+	Country           Country          `json:"country"`
+	State             State            `json:"state"`
+	Lga               Lga              `json:"lga"`
+	Category          Category         `json:"category"`
+	Subcategory       Subcategory      `json:"subcategory"`
+	BusinessKyc       BusinessKyc      `json:"business_kyc"`
+	RenterKyc         RenterKyc        `json:"renter_kyc"`
+	UserSubscription  UserSubscription `json:"user_subscription"`
 }
 
 type Chat struct {
@@ -262,78 +267,78 @@ type Chat struct {
 
 type BusinessKyc struct {
 	ID                 string  `json:"id"`
-	Address            string  `json:"address"`
+	Address            string  `json:"address,omitempty"`
 	CacNumber          *string `json:"cac_number,omitempty"`
-	DisplayName        string  `json:"display_name"`
-	Description        string  `json:"description"`
-	KeyBonus           string  `json:"key_bonus"`
-	BusinessRegistered string  `json:"business_registered"` // e.g., "YES" or "NO"
+	DisplayName        string  `json:"display_name,omitempty"`
+	Description        string  `json:"description,omitempty"`
+	KeyBonus           string  `json:"key_bonus,omitempty"`
+	BusinessRegistered string  `json:"business_registered,omitempty"` // e.g., "YES" or "NO"
 
-	UserID string `json:"user_id"`
+	UserID string `json:"user_id,omitempty"`
 	User   *User  `json:"user,omitempty"`
 
-	CountryID string   `json:"country_id"`
+	CountryID string   `json:"country_id,omitempty"`
 	Country   *Country `json:"country,omitempty"`
 
-	StateID string `json:"state_id"`
+	StateID string `json:"state_id,omitempty"`
 	State   *State `json:"state,omitempty"`
 
-	LgaID string `json:"lga_id"`
+	LgaID string `json:"lga_id,omitempty"`
 	Lga   *Lga   `json:"lga,omitempty"`
 
-	PlanID string `json:"plan_id"`
+	PlanID string `json:"plan_id,omitempty"`
 	Plan   *Plan  `json:"plan,omitempty"`
 
-	Verified   bool `json:"verified"`
-	ActivePlan bool `json:"active_plan"`
+	Verified   bool `json:"verified,omitempty"`
+	ActivePlan bool `json:"active_plan,omitempty"`
 
-	ShopBanner string `json:"shop_banner"`
-	Industries string `json:"industries"`
+	ShopBanner string `json:"shop_banner,omitempty"`
+	Industries string `json:"industries,omitempty"`
 
-	Subdomain string    `json:"subdomain"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Subdomain string    `json:"subdomain,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type RenterKyc struct {
 	ID      string `json:"id"`
-	Address string `json:"address"`
+	Address string `json:"address,omitempty"`
 
 	UploadedImage  string `json:"uploaded_image,omitempty"`
 	IdentityNumber string `json:"identity_number,omitempty"`
 
-	IdentityTypeID string        `json:"identity_type_id"`
+	IdentityTypeID string        `json:"identity_type_id,omitempty"`
 	IdentityType   *IdentityType `json:"identity_type,omitempty"`
 
-	UserID string `json:"user_id"`
+	UserID string `json:"user_id,omitempty"`
 	User   *User  `json:"user,omitempty"`
 
-	CountryID string   `json:"country_id"`
+	CountryID string   `json:"country_id,omitempty"`
 	Country   *Country `json:"country,omitempty"`
 
-	StateID string `json:"state_id"`
+	StateID string `json:"state_id,omitempty"`
 	State   *State `json:"state,omitempty"`
 
-	LgaID string `json:"lga_id"`
+	LgaID string `json:"lga_id,omitempty"`
 	Lga   *Lga   `json:"lga,omitempty"`
 
-	Verified   bool `json:"verified"`
-	ActivePlan bool `json:"active_plan"`
+	Verified   bool `json:"verified,omitempty"`
+	ActivePlan bool `json:"active_plan,omitempty"`
 
-	PlanID string `json:"plan_id"`
+	PlanID string `json:"plan_id,omitempty"`
 	Plan   *Plan  `json:"plan,omitempty"`
 
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type Plan struct {
 	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	MonthlyPrice float64   `json:"monthly_price"`
-	AnnualPrice  float64   `json:"annual_price"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Name         string    `json:"name,omitempty"`
+	MonthlyPrice float64   `json:"monthly_price,omitempty"`
+	AnnualPrice  float64   `json:"annual_price,omitempty"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at,omitempty"`
 }
 
 type IdentityType struct {
@@ -350,7 +355,7 @@ type SavedInventory struct {
 	UpdatedAt   time.Time   `json:"updated_at"`
 	CreatedAt   time.Time   `json:"created_at"`
 	Inventory   Inventory   `json:"inventory"`
-	User        User        `json:"user"`
+	User        User        `json:"user,omitempty"`
 	Country     Country     `json:"country"`
 	State       State       `json:"state"`
 	Lga         Lga         `json:"lga"`

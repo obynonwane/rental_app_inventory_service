@@ -3891,7 +3891,17 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			sub.subcategory_slug,
 			lga.id,
 			lga.name,
-			lga.lga_slug
+			lga.lga_slug,
+			bkyc.id,
+			bkyc.address,
+			bkyc.business_registered,
+			bkyc.cac_number,
+			bkyc.display_name,
+			bkyc.subdomain,
+			bkyc.active_plan,
+			rkyc.id,
+			rkyc.active_plan,
+			rkyc.verified
 		FROM inventory_bookings ivb
 		JOIN inventories iv ON ivb.inventory_id = iv.id
 		JOIN users u ON u.id = iv.user_id
@@ -3900,6 +3910,8 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		JOIN lgas lga ON lga.id = iv.lga_id
 		JOIN categories cat ON cat.id = iv.category_id
 		JOIN subcategories sub ON sub.id = iv.subcategory_id
+		LEFT JOIN business_kycs bkyc ON bkyc.user_id = u.id
+		LEFT JOIN renter_kycs rkyc ON rkyc.user_id = u.id
 		WHERE ivb.renter_id = $1
 		ORDER BY ivb.created_at DESC
 		LIMIT $2 OFFSET $3
@@ -3925,6 +3937,8 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		var cat Category
 		var sub Subcategory
 		var lga Lga
+		var bkyc BusinessKyc
+		var rkyc RenterKyc
 
 		// Handle nullable DB fields
 		var description sql.NullString
@@ -3932,6 +3946,18 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		var category sql.NullString
 		var subcategory sql.NullString
 		var tags sql.NullString
+
+		var bkycID sql.NullString
+		var bkycAddress sql.NullString
+		var bkycBusinessRegistered sql.NullString
+		var bkycCacNumber sql.NullString
+		var bkycDisplayName sql.NullString
+		var bkycSubdomain sql.NullString
+		var bkycActivePlan sql.NullBool
+
+		var rkycID sql.NullString
+		var rkycActivePlan sql.NullBool
+		var rkycVerified sql.NullBool
 
 		if err := rows.Scan(
 			&b.ID,
@@ -3981,6 +4007,16 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			&lga.ID,
 			&lga.Name,
 			&lga.LgaSlug,
+			&bkycID,
+			&bkycAddress,
+			&bkycBusinessRegistered,
+			&bkycCacNumber,
+			&bkycDisplayName,
+			&bkycSubdomain,
+			&bkycActivePlan,
+			&rkycID,
+			&rkycActivePlan,
+			&rkycVerified,
 		); err != nil {
 			return nil, err
 		}
@@ -4002,6 +4038,33 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		if tags.Valid {
 			i.Tags = wrapperspb.String(tags.String)
 		}
+
+		if bkycID.Valid {
+			bkyc.ID = bkycID.String
+		}
+		if bkycAddress.Valid {
+			bkyc.Address = bkycAddress.String
+		}
+		if bkycBusinessRegistered.Valid {
+			bkyc.BusinessRegistered = bkycBusinessRegistered.String
+		}
+		if bkycCacNumber.Valid {
+			bkyc.CacNumber = &bkycCacNumber.String
+		}
+		if bkycDisplayName.Valid {
+			bkyc.DisplayName = bkycDisplayName.String
+		}
+		if bkycSubdomain.Valid {
+			bkyc.Subdomain = bkycSubdomain.String
+		}
+		bkyc.ActivePlan = bkycActivePlan.Valid && bkycActivePlan.Bool
+
+		if rkycID.Valid {
+			rkyc.ID = rkycID.String
+		}
+		rkyc.ActivePlan = rkycActivePlan.Valid && rkycActivePlan.Bool
+		rkyc.Verified = rkycVerified.Valid && rkycVerified.Bool
+
 		// Assign inventory and seller info to purchase
 		b.Inventory = i
 		b.User = u
@@ -4010,6 +4073,8 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		b.Category = cat
 		b.Subcategory = sub
 		b.Lga = lga
+		b.BusinessKyc = bkyc
+		b.RenterKyc = rkyc
 
 		// add this booking to slice
 		bookings = append(bookings, b)
@@ -4087,7 +4152,27 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			sub.subcategory_slug,
 			lga.id,
 			lga.name,
-			lga.lga_slug
+			lga.lga_slug,
+			bkyc.id,
+			bkyc.address,
+			bkyc.business_registered,
+			bkyc.cac_number,
+			bkyc.display_name,
+			bkyc.subdomain,
+			bkyc.active_plan,
+			rkyc.id,
+			rkyc.active_plan,
+			rkyc.verified,
+			us.id,
+			us.plan_id,
+			us.billing_cycle,
+			us.created_at,
+			us.updated_at,
+			us.start_date,
+			us.end_date,
+			us.number_of_days,
+			us.subscription_canceled,
+			us.status
 		FROM inventory_sales ivs
 		JOIN inventories iv ON ivs.inventory_id = iv.id
 		JOIN users u ON u.id = iv.user_id
@@ -4096,6 +4181,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		JOIN lgas lga ON lga.id = iv.lga_id
 		JOIN categories cat ON cat.id = iv.category_id
 		JOIN subcategories sub ON sub.id = iv.subcategory_id
+		LEFT JOIN user_subscriptions us ON us.user_id = u.id
+		LEFT JOIN business_kycs bkyc ON bkyc.user_id = u.id
+		LEFT JOIN renter_kycs rkyc ON rkyc.user_id = u.id
 		WHERE ivs.buyer_id = $1
 		ORDER BY ivs.created_at DESC
 		LIMIT $2 OFFSET $3
@@ -4118,6 +4206,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		var cat Category
 		var sub Subcategory
 		var lga Lga
+		var bkyc BusinessKyc
+		var rkyc RenterKyc
+		var us UserSubscription
 
 		// Handle nullable DB fields
 		var description sql.NullString
@@ -4125,6 +4216,29 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		var category sql.NullString
 		var subcategory sql.NullString
 		var tags sql.NullString
+
+		var bkycID sql.NullString
+		var bkycAddress sql.NullString
+		var bkycBusinessRegistered sql.NullString
+		var bkycCacNumber sql.NullString
+		var bkycDisplayName sql.NullString
+		var bkycSubdomain sql.NullString
+		var bkycActivePlan sql.NullBool
+
+		var rkycID sql.NullString
+		var rkycActivePlan sql.NullBool
+		var rkycVerified sql.NullBool
+
+		var usID sql.NullString
+		var usPlanID sql.NullString
+		var usBillingCycle sql.NullString
+		var usCreatedAt sql.NullTime
+		var usUpdatedAt sql.NullTime
+		var usStartDate sql.NullTime
+		var usEndDate sql.NullTime
+		var usNumberDays sql.NullInt32
+		var usSubscriptionCanceled sql.NullBool
+		var usStatus sql.NullString
 
 		err := rows.Scan(
 			&p.ID,
@@ -4167,6 +4281,26 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			&lga.ID,
 			&lga.Name,
 			&lga.LgaSlug,
+			&bkycID,
+			&bkycAddress,
+			&bkycBusinessRegistered,
+			&bkycCacNumber,
+			&bkycDisplayName,
+			&bkycSubdomain,
+			&bkycActivePlan,
+			&rkycID,
+			&rkycActivePlan,
+			&rkycVerified,
+			&usID,
+			&usPlanID,
+			&usBillingCycle,
+			&usCreatedAt,
+			&usUpdatedAt,
+			&usStartDate,
+			&usEndDate,
+			&usNumberDays,
+			&usSubscriptionCanceled,
+			&usStatus,
 		)
 		if err != nil {
 			return nil, err
@@ -4189,6 +4323,61 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 			i.Tags = wrapperspb.String(tags.String)
 		}
 
+		if bkycID.Valid {
+			bkyc.ID = bkycID.String
+		}
+		if bkycAddress.Valid {
+			bkyc.Address = bkycAddress.String
+		}
+		if bkycBusinessRegistered.Valid {
+			bkyc.BusinessRegistered = bkycBusinessRegistered.String
+		}
+		if bkycCacNumber.Valid {
+			bkyc.CacNumber = &bkycCacNumber.String
+		}
+		if bkycDisplayName.Valid {
+			bkyc.DisplayName = bkycDisplayName.String
+		}
+		if bkycSubdomain.Valid {
+			bkyc.Subdomain = bkycSubdomain.String
+		}
+		bkyc.ActivePlan = bkycActivePlan.Valid && bkycActivePlan.Bool
+
+		if rkycID.Valid {
+			rkyc.ID = rkycID.String
+		}
+		rkyc.ActivePlan = rkycActivePlan.Valid && rkycActivePlan.Bool
+		rkyc.Verified = rkycVerified.Valid && rkycVerified.Bool
+
+		if usID.Valid {
+			us.ID = usID.String
+		}
+		if usPlanID.Valid {
+			us.PlanID = usPlanID.String
+		}
+		if usBillingCycle.Valid {
+			us.BillingCycle = usBillingCycle.String
+		}
+		if usCreatedAt.Valid {
+			us.CreatedAt = usCreatedAt.Time
+		}
+		if usUpdatedAt.Valid {
+			us.UpdatedAt = usUpdatedAt.Time
+		}
+		if usStartDate.Valid {
+			us.StartDate = usStartDate.Time
+		}
+		if usEndDate.Valid {
+			us.EndDate = usEndDate.Time
+		}
+		if usNumberDays.Valid {
+			us.NumberDays = int(usNumberDays.Int32)
+		}
+		us.SubscriptionCanceled = usSubscriptionCanceled.Valid && usSubscriptionCanceled.Bool
+		if usStatus.Valid {
+			us.Status = usStatus.String
+		}
+
 		// Assign inventory and seller info to purchase
 		p.Inventory = i
 		p.User = u
@@ -4198,6 +4387,9 @@ func (u *PostgresRepository) GetMyPurchases(ctx context.Context, detail MyPurcha
 		p.Subcategory = sub
 		p.Lga = lga
 
+		p.BusinessKyc = bkyc
+		p.RenterKyc = rkyc
+		p.UserSubscription = us
 		purchases = append(purchases, p)
 	}
 

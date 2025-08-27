@@ -1839,11 +1839,9 @@ func (r *PostgresRepository) SearchInventory(
 	p *SearchPayload,
 ) (*InventoryCollection, error) {
 
-	log.Println(p, "the payload")
 	ctx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	log.Println(p, "The param")
 	// Parse limit & offset
 	limit := 20
 	offset := 0
@@ -1870,6 +1868,9 @@ func (r *PostgresRepository) SearchInventory(
 
 	// Always filter out deleted inventories
 	conditions = append(conditions, "l.deleted = false")
+	conditions = append(conditions, fmt.Sprintf("l.visibility = $%d::visibility_enum", argIdx))
+	args = append(args, "public")
+	argIdx++
 
 	if p.CountryID != "" {
 		conditions = append(conditions, fmt.Sprintf("l.country_id = $%d", argIdx))

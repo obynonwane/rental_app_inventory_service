@@ -93,6 +93,7 @@ type Inventory struct {
 	UsageGuide      *wrapperspb.StringValue `json:"usage_guide"`
 	Condition       *wrapperspb.StringValue `json:"condition"`
 	Included        *wrapperspb.StringValue `json:"included"`
+	Visibility      string                  `json:"visibility"`
 
 	Images []InventoryImage `json:"images"` // One-to-many relationship
 	User   User             `json:"user,omitempty"`

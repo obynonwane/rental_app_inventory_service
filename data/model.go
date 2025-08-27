@@ -3079,6 +3079,9 @@ func (r *PostgresRepository) SaveInventory(ctx context.Context, userId, inventor
 
 func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error {
 
+	log.Println(id)
+	log.Println(userId)
+	log.Println(inventoryId)
 	query := `DELETE FROM saved_inventories WHERE id = $1 AND user_id = $2 AND inventory_id= $3`
 	res, err := r.Conn.ExecContext(ctx, query, id, userId, inventoryId)
 	if err != nil {
@@ -3902,7 +3905,17 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			bkyc.active_plan,
 			rkyc.id,
 			rkyc.active_plan,
-			rkyc.verified
+			rkyc.verified,
+			us.id,
+			us.plan_id,
+			us.billing_cycle,
+			us.created_at,
+			us.updated_at,
+			us.start_date,
+			us.end_date,
+			us.number_of_days,
+			us.subscription_canceled,
+			us.status
 		FROM inventory_bookings ivb
 		JOIN inventories iv ON ivb.inventory_id = iv.id
 		JOIN users u ON u.id = iv.user_id
@@ -3911,6 +3924,7 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		JOIN lgas lga ON lga.id = iv.lga_id
 		JOIN categories cat ON cat.id = iv.category_id
 		JOIN subcategories sub ON sub.id = iv.subcategory_id
+		LEFT JOIN user_subscriptions us ON us.user_id = u.id
 		LEFT JOIN business_kycs bkyc ON bkyc.user_id = u.id
 		LEFT JOIN renter_kycs rkyc ON rkyc.user_id = u.id
 		WHERE ivb.renter_id = $1
@@ -3940,6 +3954,7 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		var lga Lga
 		var bkyc BusinessKyc
 		var rkyc RenterKyc
+		var us UserSubscription
 
 		// Handle nullable DB fields
 		var description sql.NullString
@@ -3959,6 +3974,17 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		var rkycID sql.NullString
 		var rkycActivePlan sql.NullBool
 		var rkycVerified sql.NullBool
+
+		var usID sql.NullString
+		var usPlanID sql.NullString
+		var usBillingCycle sql.NullString
+		var usCreatedAt sql.NullTime
+		var usUpdatedAt sql.NullTime
+		var usStartDate sql.NullTime
+		var usEndDate sql.NullTime
+		var usNumberDays sql.NullInt32
+		var usSubscriptionCanceled sql.NullBool
+		var usStatus sql.NullString
 
 		if err := rows.Scan(
 			&b.ID,
@@ -4018,6 +4044,16 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 			&rkycID,
 			&rkycActivePlan,
 			&rkycVerified,
+			&usID,
+			&usPlanID,
+			&usBillingCycle,
+			&usCreatedAt,
+			&usUpdatedAt,
+			&usStartDate,
+			&usEndDate,
+			&usNumberDays,
+			&usSubscriptionCanceled,
+			&usStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -4066,6 +4102,35 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		rkyc.ActivePlan = rkycActivePlan.Valid && rkycActivePlan.Bool
 		rkyc.Verified = rkycVerified.Valid && rkycVerified.Bool
 
+		if usID.Valid {
+			us.ID = usID.String
+		}
+		if usPlanID.Valid {
+			us.PlanID = usPlanID.String
+		}
+		if usBillingCycle.Valid {
+			us.BillingCycle = usBillingCycle.String
+		}
+		if usCreatedAt.Valid {
+			us.CreatedAt = usCreatedAt.Time
+		}
+		if usUpdatedAt.Valid {
+			us.UpdatedAt = usUpdatedAt.Time
+		}
+		if usStartDate.Valid {
+			us.StartDate = usStartDate.Time
+		}
+		if usEndDate.Valid {
+			us.EndDate = usEndDate.Time
+		}
+		if usNumberDays.Valid {
+			us.NumberDays = int(usNumberDays.Int32)
+		}
+		us.SubscriptionCanceled = usSubscriptionCanceled.Valid && usSubscriptionCanceled.Bool
+		if usStatus.Valid {
+			us.Status = usStatus.String
+		}
+
 		// Assign inventory and seller info to purchase
 		b.Inventory = i
 		b.User = u
@@ -4076,6 +4141,7 @@ func (u *PostgresRepository) GetMyBookings(ctx context.Context, detail MyBooking
 		b.Lga = lga
 		b.BusinessKyc = bkyc
 		b.RenterKyc = rkyc
+		b.UserSubscription = us
 
 		// add this booking to slice
 		bookings = append(bookings, b)

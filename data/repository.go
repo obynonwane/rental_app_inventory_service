@@ -59,7 +59,11 @@ type Repository interface {
 	GetBusinessBySubdomain(ctx context.Context, domain string) (*BusinessKyc, error)
 
 	GetMyBookings(ctx context.Context, detail MyBookingPayload) (*MyBookingCollection, error)
+	GetBookingRequest(ctx context.Context, detail MyBookingPayload) (*MyBookingCollection, error)
 	GetMyPurchases(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error)
+
+	GetPurchaseRequest(ctx context.Context, detail MyPurchasePayload) (*MyPurchaseCollection, error)
+
 	GetMyInventories(ctx context.Context, detail MyInventoryPayload) (*MyInventoryCollection, error)
 
 	GetMySubscriptionHistory(ctx context.Context, detail MySubscriptionHistoryPayload) (*MySubscriptionHistoryCollection, error)

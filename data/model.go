@@ -5529,3 +5529,56 @@ func (u *PostgresRepository) ReportInventoryRating(ctx context.Context, detail R
 
 	return nil
 }
+
+type MarkInventoryAvailabilityPayload struct {
+	UserId      string `json:"user_id"`
+	InventoryId string `json:"inventory_id" binding:"required"`
+	Quantity    string `json:"quantity"`
+	Available   string `json:"available"`
+}
+
+func (repo *PostgresRepository) MarkInventoryAvailability(ctx context.Context, detail MarkInventoryAvailabilityPayload) error {
+	var count int32
+
+	// Validate availability first
+	if detail.Available != "yes" && detail.Available != "no" {
+		return fmt.Errorf("error processing: invalid availability value")
+	}
+
+	// Parse quantity if provided
+	if detail.Quantity != "" {
+		quantityInt, err := strconv.Atoi(detail.Quantity)
+		if err != nil {
+			return err
+		}
+		count = int32(quantityInt)
+	}
+
+	if detail.Available == "no" && count > 0 {
+		return fmt.Errorf("error processing: quantity should be zero (o) for non available item")
+	}
+
+	// If availability is "no", override quantity to 0
+	if detail.Available == "no" {
+		count = 0
+	}
+
+	// If availability is "yes", quantity must be provided
+	if detail.Available == "yes" && count == 0 {
+		return fmt.Errorf("error processing: quantity must be provided for available items")
+	}
+
+	if count < 0 {
+		return fmt.Errorf("error processing: invalid quantity value")
+	}
+
+	// Execute update
+	_, err := repo.Conn.ExecContext(ctx, `
+		UPDATE inventories
+		SET quantity = $1,
+			is_available = $2
+		WHERE id = $3 AND user_id = $4
+	`, count, detail.Available, detail.InventoryId, detail.UserId)
+
+	return err
+}

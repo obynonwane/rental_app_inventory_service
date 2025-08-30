@@ -5582,3 +5582,55 @@ func (repo *PostgresRepository) MarkInventoryAvailability(ctx context.Context, d
 
 	return err
 }
+
+func (repo *PostgresRepository) GetPendingBookingCount(ctx context.Context, userId string) (int32, int32, error) {
+
+	var bookingRequestToOwnerCount int32
+	var rentingRequestCount int32
+
+	// execute query to count in inventories where category_id matches category.ID
+	bookingRequestToOwnerQuery := `SELECT COUNT(*) FROM inventory_bookings WHERE owner_id = $1 AND status = 'pending'`
+
+	bookingToOwnerRow := repo.Conn.QueryRowContext(ctx, bookingRequestToOwnerQuery, userId)
+
+	if err := bookingToOwnerRow.Scan(&bookingRequestToOwnerCount); err != nil {
+		log.Println("Error scanning row category count:", err)
+	}
+
+	// execute query to count in inventories where category_id matches category.ID
+	rentingRequestQuery := `SELECT COUNT(*) FROM inventory_bookings WHERE renter_id = $1 AND status = 'pending'`
+
+	rentingRow := repo.Conn.QueryRowContext(ctx, rentingRequestQuery, userId)
+
+	if err := rentingRow.Scan(&rentingRequestCount); err != nil {
+		log.Println("Error scanning row category count:", err)
+	}
+
+	return bookingRequestToOwnerCount, rentingRequestCount, nil
+}
+func (repo *PostgresRepository) GetPendingPurchaseCount(ctx context.Context, userId string) (int32, int32, error) {
+
+	var purchaseRequestToOwnerCount int32
+	var purchaseRequestByOwnerCount int32
+
+	// execute query to count in inventories where category_id matches category.ID
+	purchaseRequestToOwnerQuery := `SELECT COUNT(*) FROM inventory_sales WHERE seller_id = $1 AND status = 'available' and payment_status = 'pending'`
+
+	bookingToOwnerRow := repo.Conn.QueryRowContext(ctx, purchaseRequestToOwnerQuery, userId)
+
+	if err := bookingToOwnerRow.Scan(&purchaseRequestToOwnerCount); err != nil {
+		log.Println("Error scanning row category count:", err)
+	}
+
+	// execute query to count in inventories where category_id matches category.ID
+	rentingRequestQuery := `SELECT COUNT(*) FROM inventory_sales WHERE buyer_id = $1 AND status = 'available' and payment_status = 'pending'`
+
+	rentingRow := repo.Conn.QueryRowContext(ctx, rentingRequestQuery, userId)
+
+	if err := rentingRow.Scan(&purchaseRequestByOwnerCount); err != nil {
+		log.Println("Error scanning row category count:", err)
+	}
+
+	return purchaseRequestToOwnerCount, purchaseRequestByOwnerCount, nil
+
+}

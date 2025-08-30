@@ -61,6 +61,8 @@ func (app *Config) routes() http.Handler {
 
 	mux.Get("/api/v1/inventory-rating-replies", app.GetInventoryRatingReplies)
 	mux.Get("/api/v1/user-rating-replies", app.GetUserRatingReplies)
+	mux.Get("/api/v1/pending-booking-count", app.GetPendingBookingCount)
+	mux.Get("/api/v1/pending-purchase-count", app.GetPendingPurchaseCount)
 	// Add the Prometheus metrics endpoint to the router
 	mux.Handle("/metrics", promhttp.Handler())
 

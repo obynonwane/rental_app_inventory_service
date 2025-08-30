@@ -74,4 +74,7 @@ type Repository interface {
 	ReportInventoryRating(ctx context.Context, detail RatingReportHelpfulPayload) error
 	InventoryRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error
 	MarkInventoryAvailability(ctx context.Context, detail MarkInventoryAvailabilityPayload) error
+
+	GetPendingBookingCount(ctx context.Context, userId string) (int32, int32, error)
+	GetPendingPurchaseCount(ctx context.Context, userId string) (int32, int32, error)
 }

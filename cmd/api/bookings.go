@@ -215,3 +215,75 @@ func (app *Config) GetBookingRequest(w http.ResponseWriter, r *http.Request) {
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+func (app *Config) GetPendingBookingCount(w http.ResponseWriter, r *http.Request) {
+
+	queryParams := r.URL.Query()
+	userIdStr := queryParams.Get("userId")
+	if userIdStr == "" {
+
+		app.errorJSON(w, errors.New("user id not found"), nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	bookingRequestToUser, userBookingRequest, err := app.Repo.GetPendingBookingCount(timeoutCtx, userIdStr)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a data struct or map to hold the counts
+	data := map[string]interface{}{
+		"bookingRequestToUser": bookingRequestToUser,
+		"userBookingRequest":   userBookingRequest,
+	}
+	var payload = jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "booking count successfully returned",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (app *Config) GetPendingPurchaseCount(w http.ResponseWriter, r *http.Request) {
+
+	queryParams := r.URL.Query()
+	userIdStr := queryParams.Get("userId")
+	if userIdStr == "" {
+
+		app.errorJSON(w, errors.New("user id not found"), nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	purchaseRequestToUser, userPurchaseRequest, err := app.Repo.GetPendingPurchaseCount(timeoutCtx, userIdStr)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a data struct or map to hold the counts
+	data := map[string]interface{}{
+		"purchaseRequestToUser": purchaseRequestToUser,
+		"userPurchaseRequest":   userPurchaseRequest,
+	}
+	var payload = jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "purchase count successfully returned",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

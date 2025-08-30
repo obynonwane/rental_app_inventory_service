@@ -73,4 +73,5 @@ type Repository interface {
 
 	ReportInventoryRating(ctx context.Context, detail RatingReportHelpfulPayload) error
 	InventoryRatingHelpful(ctx context.Context, detail RatingReportHelpfulPayload) error
+	MarkInventoryAvailability(ctx context.Context, detail MarkInventoryAvailabilityPayload) error
 }

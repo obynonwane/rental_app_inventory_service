@@ -1946,3 +1946,33 @@ func (app *Config) InventoryRatingHelpful(w http.ResponseWriter, r *http.Request
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+func (app *Config) MarkInventoryAvailability(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.MarkInventoryAvailabilityPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		log.Printf("%v", err)
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Create a context with a timeout for the asynchronous task
+	ctx := r.Context()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
+	defer cancel()
+
+	err = app.Repo.MarkInventoryAvailability(timeoutCtx, requestPayload)
+	if err != nil {
+		app.errorJSON(w, err, nil)
+		return
+	}
+	var payload = jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "request processed",
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

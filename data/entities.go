@@ -291,8 +291,8 @@ type BusinessKyc struct {
 	PlanID string `json:"plan_id,omitempty"`
 	Plan   *Plan  `json:"plan,omitempty"`
 
-	Verified   bool `json:"verified,omitempty"`
-	ActivePlan bool `json:"active_plan,omitempty"`
+	Verified   bool `json:"verified"`
+	ActivePlan bool `json:"active_plan"`
 
 	ShopBanner string `json:"shop_banner,omitempty"`
 	Industries string `json:"industries,omitempty"`

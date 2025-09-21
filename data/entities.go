@@ -196,34 +196,34 @@ type Lga struct {
 }
 
 type InventoryBooking struct {
-	ID                string      `json:"id"`
-	InventoryID       string      `json:"inventory_id"`
-	RenterID          string      `json:"renter_id"`
-	OwnerID           string      `json:"owner_id"`
-	StartDate         time.Time   `json:"start_date"`           // just the date part
-	StartTime         *string     `json:"start_time,omitempty"` // optional, stored as string e.g. "15:04:05"
-	EndDate           time.Time   `json:"end_date"`
-	EndTime           *string     `json:"end_time,omitempty"`
-	OfferPricePerUnit float64     `json:"offer_price_per_unit"`
-	TotalAmount       float64     `json:"total_amount"`
-	SecurityDeposit   float64     `json:"security_deposit"`
-	Quantity          float64     `json:"quantity"`
-	Status            string      `json:"status"`
-	PaymentStatus     string      `json:"payment_status"`
-	RentalType        string      `json:"rental_type"` // e.g. hourly, daily
-	RentalDuration    float64     `json:"rental_duration"`
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	PrimaryImage      string      `json:"primary_image"`
-	Inventory         Inventory   `json:"inventory"`
-	User              User        `json:"user"`
-	Country           Country     `json:"country"`
-	State             State       `json:"state"`
-	Lga               Lga         `json:"lga"`
-	Category          Category    `json:"category"`
-	Subcategory       Subcategory `json:"subcategory"`
-	BusinessKyc       BusinessKyc `json:"business_kyc"`
-	RenterKyc         RenterKyc   `json:"renter_kyc"`
+	ID                string           `json:"id"`
+	InventoryID       string           `json:"inventory_id"`
+	RenterID          string           `json:"renter_id"`
+	OwnerID           string           `json:"owner_id"`
+	StartDate         time.Time        `json:"start_date"`           // just the date part
+	StartTime         *string          `json:"start_time,omitempty"` // optional, stored as string e.g. "15:04:05"
+	EndDate           time.Time        `json:"end_date"`
+	EndTime           *string          `json:"end_time,omitempty"`
+	OfferPricePerUnit float64          `json:"offer_price_per_unit"`
+	TotalAmount       float64          `json:"total_amount"`
+	SecurityDeposit   float64          `json:"security_deposit"`
+	Quantity          float64          `json:"quantity"`
+	Status            string           `json:"status"`
+	PaymentStatus     string           `json:"payment_status"`
+	RentalType        string           `json:"rental_type"` // e.g. hourly, daily
+	RentalDuration    float64          `json:"rental_duration"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
+	PrimaryImage      string           `json:"primary_image"`
+	Inventory         Inventory        `json:"inventory"`
+	User              User             `json:"user"`
+	Country           Country          `json:"country"`
+	State             State            `json:"state"`
+	Lga               Lga              `json:"lga"`
+	Category          Category         `json:"category"`
+	Subcategory       Subcategory      `json:"subcategory"`
+	BusinessKyc       BusinessKyc      `json:"business_kyc"`
+	RenterKyc         RenterKyc        `json:"renter_kyc"`
 	UserSubscription  UserSubscription `json:"user_subscription,omitempty"`
 }
 
@@ -383,6 +383,8 @@ type UserSubscription struct {
 	NumberDays           int       `json:"number_days,omitempty"` // number of days remaining
 	CreatedAt            time.Time `json:"created_at,omitempty"`  // record creation timestamp
 	UpdatedAt            time.Time `json:"updated_at,omitempty"`  // record last update timestamp
+	Plan                 Plan      `json:"plan"`
+	User                 User      `json:"user"`
 }
 
 type UserSubscriptionHistory struct {

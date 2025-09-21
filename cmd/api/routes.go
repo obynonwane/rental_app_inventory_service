@@ -22,7 +22,6 @@ func (app *Config) routes() http.Handler {
 		MaxAge:           300,
 	}))
 
-	mux.Get("/api/v1/getusers", app.GetUsers)
 	mux.Post("/api/v1/create-booking", app.CreateBooking)
 	mux.Post("/api/v1/my-booking", app.MyBookings)
 	mux.Post("/api/v1/booking-requests", app.GetBookingRequest)
@@ -65,6 +64,20 @@ func (app *Config) routes() http.Handler {
 	mux.Get("/api/v1/pending-purchase-count", app.GetPendingPurchaseCount)
 	// Add the Prometheus metrics endpoint to the router
 	mux.Handle("/metrics", promhttp.Handler())
+
+	// admin endpoints
+	mux.Post("/api/v1/pending-inventories", app.AdminGetInventoryPendingApproval)
+	mux.Get("/api/v1/approve-inventory/{id}", app.AdminApproveInventory)
+	mux.Post("/api/v1/active-subscriptions", app.AdminGetActiveSubscriptions)
+	mux.Post("/api/v1/getusers", app.AdminGetUsers)
+	mux.Get("/api/v1/dasboard-card", app.AdminGetDashboardCard)
+
+	mux.Get("/api/v1/amount-made-bydate/{date}", app.AdminGetAmountMadeByDate)
+	mux.Get("/api/v1/users-joined-bydate/{date}", app.AdminGetUsersJoinedByDate)
+	mux.Get("/api/v1/inventory-created-bydate/{date}", app.AdminGetInventoryCreatedByDate)
+	mux.Post("/api/v1/analytics/user-registrations", app.GetUserRegistrationStats)
+	mux.Post("/api/v1/analytics/inventory-creations", app.GetInventoryCreationStats)
+	mux.Post("/api/v1/analytics/subscription-amount", app.GetSubscriptionAmountStats)
 
 	return mux
 }

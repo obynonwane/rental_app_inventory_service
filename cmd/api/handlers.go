@@ -52,34 +52,6 @@ func (app *Config) grpcListen() {
 	}
 }
 
-func (app *Config) GetUsers(w http.ResponseWriter, r *http.Request) {
-
-	// Extract the context from the incoming HTTP request
-	ctx := r.Context()
-
-	users, err := app.Repo.GetAll(ctx)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			app.errorJSON(w, errors.New("no record found"), nil, http.StatusBadRequest)
-			return
-		}
-
-		app.errorJSON(w, err, nil, http.StatusInternalServerError)
-		return
-	}
-
-	log.Println(users)
-
-	payload := jsonResponse{
-		Error:      false,
-		StatusCode: http.StatusAccepted,
-		Message:    "users retrieved successfully",
-		Data:       users,
-	}
-
-	app.writeJSON(w, http.StatusAccepted, payload)
-}
-
 func (i *InventoryServer) CreateInventory(ctx context.Context, req *inventory.CreateInventoryRequest) (*inventory.CreateInventoryResponse, error) {
 
 	var wg sync.WaitGroup
@@ -630,59 +602,6 @@ func (i *InventoryServer) GetCategory(ctx context.Context, req *inventory.GetCat
 
 	case <-timeoutCtx.Done():
 		return nil, fmt.Errorf("request timed out while fetching subcategories")
-	}
-}
-
-func (i *InventoryServer) GetUsers(ctx context.Context, req *inventory.EmptyRequest) (*inventory.UserListResponse, error) {
-	// Create a channel to signal completion of the async task
-	userChannel := make(chan []*data.User)
-	errorChannel := make(chan error)
-
-	// Create a context with a timeout for the asynchronous task
-	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // Example timeout duration
-	defer cancel()
-
-	// Perform the database query asynchronously in a goroutine
-	go func() {
-		users, err := i.Models.GetAll(timeoutCtx) // Pass the timeout context to the DB call
-		if err != nil {
-			errorChannel <- err // Send error to the error channel
-			return
-		}
-		userChannel <- users // Send the users to the user channel
-	}()
-
-	// Wait for either the users, an error, or a timeout to occur
-	select {
-	case users := <-userChannel:
-		// Process the users and prepare the response
-		var inventoryUsers []*inventory.User
-		for _, user := range users {
-
-			invUser := &inventory.User{
-				Id:             user.ID,
-				Email:          user.Email,
-				FirstName:      user.FirstName,
-				LastName:       user.LastName,
-				Verified:       user.Verified,
-				CreatedAtHuman: formatTimestamp(timestamppb.New(user.CreatedAt)),
-				UpdatedAtHuman: formatTimestamp(timestamppb.New(user.UpdatedAt)),
-			}
-			inventoryUsers = append(inventoryUsers, invUser)
-		}
-
-		response := &inventory.UserListResponse{
-			Users: inventoryUsers,
-		}
-		return response, nil
-
-	case err := <-errorChannel:
-		// If there was an error fetching users, return it
-		return nil, fmt.Errorf("failed to retrieve users: %v", err)
-
-	case <-timeoutCtx.Done():
-		// If the operation timed out, return a timeout error
-		return nil, fmt.Errorf("request timed out while fetching users")
 	}
 }
 
@@ -1976,3 +1895,5 @@ func (app *Config) MarkInventoryAvailability(w http.ResponseWriter, r *http.Requ
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+

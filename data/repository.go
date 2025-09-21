@@ -77,4 +77,15 @@ type Repository interface {
 
 	GetPendingBookingCount(ctx context.Context, userId string) (int32, int32, error)
 	GetPendingPurchaseCount(ctx context.Context, userId string) (int32, int32, error)
+	GetAdminGetInventoryPending(ctx context.Context, detail AdminPendingInventoryPayload) (*InventoryCollection, error)
+	AdminApproveInventory(ctx context.Context, id string) error
+	AdminGetActiveSubscriptions(ctx context.Context, detail AdminGetActiveSubscriptionPayload) (*UserSubscriptionCollection, error)
+	GetAllUsers(ctx context.Context, detail AdminGetUsersPayload) (*UsersCollection, error)
+	AdminGetDashboardCard(ctx context.Context) (*DashboardCardPayload, error)
+	AdminGetAmountMadeByDate(ctx context.Context, date string) (float64, error)
+	AdminGetUsersJoinedByDate(ctx context.Context, date string) (int32, error)
+	AdminGetInventoryCreatedByDate(ctx context.Context, date string) (int32, error)
+	GetUserRegistrationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error)
+	GetInventoryCreationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error)
+	GetSubscriptionAmountStats(ctx context.Context, req SubscriptionStatsRequest) ([]SubscriptionStatsResponse, error)
 }

@@ -25,7 +25,7 @@ func (u *PostgresTestRepository) BeginTransaction(ctx context.Context) (*sql.Tx,
 	return tx, nil
 }
 
-func (u *PostgresTestRepository) GetAll(ctx context.Context) ([]*User, error) {
+func (u *PostgresTestRepository) AdminGetUsers(ctx context.Context) ([]*User, error) {
 
 	users := []*User{}
 

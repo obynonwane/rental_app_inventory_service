@@ -45,41 +45,6 @@ func (p *PostgresRepository) BeginTransaction(ctx context.Context) (*sql.Tx, err
 	return tx, nil
 }
 
-func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
-
-	query := `SELECT id, email, first_name, last_name, password, verified, updated_at, created_at FROM users`
-
-	rows, err := u.Conn.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var users []*User
-
-	for rows.Next() {
-		var user User
-		err := rows.Scan(
-			&user.ID,
-			&user.Email,
-			&user.FirstName,
-			&user.LastName,
-			&user.Password,
-			&user.Verified,
-			&user.CreatedAt,
-			&user.UpdatedAt,
-		)
-		if err != nil {
-			log.Println("Error scanning", err)
-			return nil, err
-		}
-
-		users = append(users, &user)
-	}
-
-	return users, nil
-}
-
 func (u *PostgresRepository) GetAllCategory(ctx context.Context) ([]*Category, error) {
 
 	query := `
@@ -1414,7 +1379,6 @@ func (u *PostgresRepository) GetInventoryRatings(ctx context.Context, id string,
 	rows, err := u.Conn.QueryContext(ctx, query, id, limit, offset)
 
 	if err != nil {
-		log.Println(err, "ERROR 3")
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -3077,20 +3041,57 @@ func (r *PostgresRepository) SaveInventory(ctx context.Context, userId, inventor
 	return nil
 }
 
-func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error {
+// func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error {
 
-	log.Println(id)
-	log.Println(userId)
-	log.Println(inventoryId)
-	query := `DELETE FROM saved_inventories WHERE id = $1 AND user_id = $2 AND inventory_id= $3`
+// 	query := `DELETE FROM saved_inventories WHERE id = $1 AND user_id = $2 AND inventory_id= $3`
+// 	res, err := r.Conn.ExecContext(ctx, query, id, userId, inventoryId)
+// 	if err != nil {
+// 		log.Println("Delete failed:", err)
+// 		return fmt.Errorf("failed to deleted inventory: %v", err)
+// 	}
+
+// 	count, _ := res.RowsAffected()
+// 	log.Printf("Deleted %d saved_inventory record(s)", count)
+
+// 	return nil
+// }
+
+func (r *PostgresRepository) DeleteSaveInventory(ctx context.Context, id, userId, inventoryId string) error {
+	// Trim whitespace (just in case)
+	id = strings.TrimSpace(id)
+	userId = strings.TrimSpace(userId)
+	inventoryId = strings.TrimSpace(inventoryId)
+
+	// Debug log input values
+	log.Printf("Attempting to delete saved_inventory with id=%s, user_id=%s, inventory_id=%s", id, userId, inventoryId)
+
+	// Prepare DELETE query
+	query := `
+		DELETE FROM saved_inventories 
+		WHERE id = $1 AND user_id = $2 AND inventory_id = $3
+	`
+
+	// Execute the query
 	res, err := r.Conn.ExecContext(ctx, query, id, userId, inventoryId)
 	if err != nil {
 		log.Println("Delete failed:", err)
-		return fmt.Errorf("failed to deleted inventory: %v", err)
+		return fmt.Errorf("failed to delete saved inventory: %w", err)
 	}
 
-	count, _ := res.RowsAffected()
+	// Check how many rows were affected
+	count, err := res.RowsAffected()
+	if err != nil {
+		log.Println("Failed to get rows affected:", err)
+		return fmt.Errorf("could not determine deletion result: %w", err)
+	}
+
+	// Log affected row count
 	log.Printf("Deleted %d saved_inventory record(s)", count)
+
+	// If no row was deleted, return an error (optional, but useful for debugging)
+	if count == 0 {
+		return fmt.Errorf("no saved_inventory record found matching provided id/user_id/inventory_id")
+	}
 
 	return nil
 }
@@ -5244,7 +5245,7 @@ func (u *PostgresRepository) GetMySubscriptionHistory(ctx context.Context, detai
 	var totalRows int32 // Variable to hold the total count
 
 	// Query to count total rows
-	countQuery := "SELECT COUNT(*) FROM user_subscriptions WHERE user_id = $1"
+	countQuery := "SELECT COUNT(*) FROM user_subscription_histories WHERE user_id = $1"
 
 	row := u.Conn.QueryRowContext(ctx, countQuery, detail.UserId)
 
@@ -5633,4 +5634,955 @@ func (repo *PostgresRepository) GetPendingPurchaseCount(ctx context.Context, use
 
 	return purchaseRequestToOwnerCount, purchaseRequestByOwnerCount, nil
 
+}
+
+type AdminPendingInventoryPayload struct {
+	Page  int32 `json:"page"`
+	Limit int32 `json:"limit"`
+}
+
+func (r *PostgresRepository) GetAdminGetInventoryPending(ctx context.Context, detail AdminPendingInventoryPayload) (*InventoryCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+	limit := detail.Limit
+
+	var total int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM inventories WHERE visibility = $1"
+
+	row := r.Conn.QueryRowContext(ctx, countQuery, "private")
+	if err := row.Scan(&total); err != nil {
+		return nil, err
+	}
+
+	// Build dynamic WHERE clause
+	var (
+		conditions []string
+		args       []interface{}
+		argIdx     = 1
+	)
+
+	// Always filter out deleted inventories
+	conditions = append(conditions, "l.visibility = $1")
+	args = append(args, "private")
+	argIdx++
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Build SELECT query with LEFT JOINs
+	selectSQL := fmt.Sprintf(`
+		SELECT
+			l.id,
+			l.name,
+			l.description,
+			l.user_id,
+			l.category_id,
+			l.subcategory_id,
+			l.promoted,
+			l.deactivated,
+			l.created_at,
+			l.updated_at,
+			l.slug,
+			l.ulid,
+			l.offer_price,
+			l.state_slug,
+			l.country_slug,
+			l.lga_slug,
+			l.category_slug,
+			l.subcategory_slug,
+
+			l.product_purpose,
+			l.quantity,
+			l.is_available,
+			l.rental_duration,
+			l.security_deposit,
+			l.metadata,
+			l.negotiable,
+			l.primary_image,
+			l.minimum_price,
+
+			l.country_id,
+			co.name AS country_name,
+			l.state_id,
+			st.name AS state_name,
+			l.lga_id,
+			la.name AS lga_name,
+			u.id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			u.phone
+		FROM inventories l
+		LEFT JOIN countries co ON l.country_id = co.id
+		LEFT JOIN states st ON l.state_id = st.id
+		LEFT JOIN lgas la ON l.lga_id = la.id
+		LEFT JOIN users u ON l.user_id = u.id
+		%s
+		ORDER BY l.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argIdx, argIdx+1)
+
+	args = append(args, limit, offset)
+
+	// Execute SELECT query
+	rows, err := r.Conn.QueryContext(ctx, selectSQL, args...)
+	if err != nil {
+		return nil, fmt.Errorf("select inventories: %w", err)
+	}
+	defer rows.Close()
+
+	// Parse inventory rows
+	var (
+		page []*inventory.Inventory
+		ids  []string
+	)
+	for rows.Next() {
+		inv := &inventory.Inventory{
+			Country: &inventory.Country{},
+			State:   &inventory.State{},
+			Lga:     &inventory.LGA{},
+			Images:  []*inventory.InventoryImage{},
+			User:    &inventory.User{},
+		}
+
+		var (
+			createdAt, updatedAt time.Time
+			slug                 sql.NullString
+			ulid                 sql.NullString
+			offerPrice           float64
+			// minimumPrice         float64
+			stateSlug       sql.NullString
+			lgaSlug         sql.NullString
+			countrySlug     sql.NullString
+			categorySlug    sql.NullString
+			subcategorySlug sql.NullString
+			primageImage    sql.NullString
+		)
+
+		if err := rows.Scan(
+			&inv.Id,
+			&inv.Name,
+			&inv.Description,
+			&inv.UserId,
+			&inv.CategoryId,
+			&inv.SubcategoryId,
+			&inv.Promoted,
+			&inv.Deactivated,
+			&createdAt,
+			&updatedAt,
+			&slug,
+			&ulid,
+			&offerPrice,
+			&stateSlug,
+			&countrySlug,
+			&lgaSlug,
+			&categorySlug,
+			&subcategorySlug,
+
+			&inv.ProductPurpose,
+			&inv.Quantity,
+			&inv.IsAvailable,
+			&inv.RentalDuration,
+			&inv.SecurityDeposit,
+			&inv.Metadata,
+			&inv.Negotiable,
+			&primageImage,
+			&inv.MinimumPrice,
+
+			&inv.CountryId,
+			&inv.Country.Name,
+			&inv.StateId,
+			&inv.State.Name,
+			&inv.LgaId,
+			&inv.Lga.Name,
+			&inv.User.Id,
+			&inv.User.Email,
+			&inv.User.FirstName,
+			&inv.User.LastName,
+			&inv.User.Phone,
+		); err != nil {
+			return nil, fmt.Errorf("scan inventory: %w", err)
+		}
+
+		if slug.Valid {
+			inv.Slug = slug.String
+		} else {
+			inv.Slug = ""
+		}
+		if ulid.Valid {
+			inv.Ulid = ulid.String
+		} else {
+			inv.Ulid = ""
+		}
+
+		if stateSlug.Valid {
+			inv.StateSlug = stateSlug.String
+		} else {
+			inv.StateSlug = ""
+		}
+
+		if lgaSlug.Valid {
+			inv.LgaSlug = lgaSlug.String
+		} else {
+			inv.LgaSlug = ""
+		}
+
+		if countrySlug.Valid {
+			inv.CountrySlug = countrySlug.String
+		} else {
+			inv.CountrySlug = ""
+		}
+		if categorySlug.Valid {
+			inv.CategorySlug = categorySlug.String
+		} else {
+			inv.CategorySlug = ""
+		}
+
+		if subcategorySlug.Valid {
+			inv.SubcategorySlug = subcategorySlug.String
+		} else {
+			inv.SubcategorySlug = ""
+		}
+		if primageImage.Valid {
+			inv.PrimaryImage = primageImage.String
+		} else {
+			inv.PrimaryImage = "NULL"
+		}
+
+		inv.OfferPrice = offerPrice
+		// inv.MinimumPrice = minimumPrice
+		inv.CreatedAt = timestamppb.New(createdAt)
+		inv.UpdatedAt = timestamppb.New(updatedAt)
+
+		page = append(page, inv)
+		ids = append(ids, inv.Id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Fetch images in batch
+	if len(ids) > 0 {
+		imgSQL := `
+			SELECT id, live_url, local_url, inventory_id, created_at, updated_at
+			FROM inventory_images
+			WHERE inventory_id = ANY($1)
+		`
+		imgRows, err := r.Conn.QueryContext(ctx, imgSQL, pq.Array(ids))
+		if err != nil {
+			return nil, fmt.Errorf("select images: %w", err)
+		}
+		defer imgRows.Close()
+
+		imgMap := make(map[string][]*inventory.InventoryImage)
+		for imgRows.Next() {
+			img := &inventory.InventoryImage{}
+			var createdAt, updatedAt time.Time
+			if err := imgRows.Scan(
+				&img.Id, &img.LiveUrl, &img.LocalUrl, &img.InventoryId,
+				&createdAt, &updatedAt,
+			); err != nil {
+				return nil, fmt.Errorf("scan image: %w", err)
+			}
+			img.CreatedAt = timestamppb.New(createdAt)
+			img.UpdatedAt = timestamppb.New(updatedAt)
+			imgMap[img.InventoryId] = append(imgMap[img.InventoryId], img)
+		}
+		for _, inv := range page {
+			inv.Images = imgMap[inv.Id]
+		}
+	}
+
+	// Fetch average ratings in batch — ONLY this part is new
+	if len(ids) > 0 {
+		ratingSQL := `
+			SELECT inventory_id, COALESCE(AVG(rating), 0) AS average_rating
+			FROM inventory_ratings
+			WHERE inventory_id = ANY($1)
+			GROUP BY inventory_id
+		`
+		ratingRows, err := r.Conn.QueryContext(ctx, ratingSQL, pq.Array(ids))
+		if err != nil {
+			return nil, fmt.Errorf("select average ratings: %w", err)
+		}
+		defer ratingRows.Close()
+
+		ratingMap := make(map[string]float64)
+		for ratingRows.Next() {
+			var inventoryID string
+			var avgRating float64
+			if err := ratingRows.Scan(&inventoryID, &avgRating); err != nil {
+				return nil, fmt.Errorf("scan rating: %w", err)
+			}
+			ratingMap[inventoryID] = avgRating
+		}
+		for _, inv := range page {
+
+			if avg, ok := ratingMap[inv.Id]; ok {
+				inv.AverageRating = &avg
+			} else {
+				inv.AverageRating = float64Ptr(0.0)
+			}
+
+		}
+	}
+
+	// Return paginated result
+	return &InventoryCollection{
+		Inventories: page,
+		TotalCount:  total,
+		Offset:      int32(offset),
+		Limit:       int32(limit),
+	}, nil
+
+}
+
+func (r *PostgresRepository) AdminApproveInventory(ctx context.Context, id string) error {
+	_, err := r.Conn.ExecContext(ctx, `
+		UPDATE inventories
+		SET visibility = $1
+		WHERE id = $2 
+	`, "public", id)
+	return err
+}
+
+type AdminGetActiveSubscriptionPayload struct {
+	Page  int32 `json:"page"`
+	Limit int32 `json:"limit"`
+}
+
+type UserSubscriptionCollection struct {
+	Data       []UserSubscription
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) AdminGetActiveSubscriptions(ctx context.Context, detail AdminGetActiveSubscriptionPayload) (*UserSubscriptionCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM user_subscriptions"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+
+	query := `SELECT 
+				ush.id, 
+				ush.user_id, 
+				ush.plan_id,
+				ush.billing_cycle,
+				ush.receipt_number,
+				ush.reference, 
+				ush.created_at,
+				ush.updated_at,
+				ush.start_date,
+				ush.end_date, 
+				ush.number_of_days,
+				ush.available_postings,
+				ush.active,
+				ush.amount,
+				p.id,
+				p.name,
+				p.created_at,
+				p.updated_at,
+				p.annual_price,
+				p.monthly_price,
+				u.id,
+				u.first_name,
+				u.last_name,
+				u.email,
+				u.phone,
+				u.created_at,
+				u.updated_at
+		    FROM user_subscriptions ush
+		    LEFT JOIN plans p ON ush.plan_id = p.id
+		    LEFT JOIN users u ON ush.user_id = u.id
+			ORDER BY ush.created_at DESC
+			LIMIT $1 OFFSET $2`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var subscriptions []UserSubscription
+
+	for rows.Next() {
+
+		var subscription UserSubscription
+		var plan Plan
+		var user User
+		if err := rows.Scan(
+			&subscription.ID,
+			&subscription.UserID,
+			&subscription.PlanID,
+			&subscription.BillingCycle,
+			&subscription.ReceiptNumber,
+			&subscription.Reference,
+			&subscription.CreatedAt,
+			&subscription.UpdatedAt,
+			&subscription.StartDate,
+			&subscription.EndDate,
+			&subscription.NumberOfDays,
+			&subscription.AvailablePostings,
+			&subscription.Active,
+			&subscription.Amount,
+			&plan.ID,
+			&plan.Name,
+			&plan.CreatedAt,
+			&plan.UpdatedAt,
+			&plan.AnnualPrice,
+			&plan.MonthlyPrice,
+			&user.ID,
+			&user.FirstName,
+			&user.LastName,
+			&user.Email,
+			&user.Phone,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		subscription.Plan = plan
+		subscription.User = user
+		subscriptions = append(subscriptions, subscription)
+	}
+
+	return &UserSubscriptionCollection{
+		Data:       subscriptions,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+}
+
+func (u *PostgresRepository) GetAll(ctx context.Context) ([]*User, error) {
+
+	query := `SELECT id, email, first_name, last_name, password, verified, updated_at, created_at FROM users`
+
+	rows, err := u.Conn.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+
+	for rows.Next() {
+		var user User
+		err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.FirstName,
+			&user.LastName,
+			&user.Password,
+			&user.Verified,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, err
+		}
+
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
+type AdminGetUsersPayload struct {
+	Page  int32 `json:"page"`
+	Limit int32 `json:"limit"`
+}
+
+type UsersCollection struct {
+	Data       []*User
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) GetAllUsers(ctx context.Context, detail AdminGetUsersPayload) (*UsersCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM users"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	query := `SELECT 
+				id, 
+				email, 
+				phone, 
+				first_name, 
+				last_name, 
+				password, 
+				verified, 
+				updated_at, 
+				created_at 
+			FROM users 
+			ORDER BY created_at DESC
+			LIMIT $1 OFFSET $2`
+
+	rows, err := u.Conn.QueryContext(ctx, query, detail.Limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+
+	for rows.Next() {
+		var user User
+		err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Phone,
+			&user.FirstName,
+			&user.LastName,
+			&user.Password,
+			&user.Verified,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			log.Println("Error scanning", err)
+			return nil, err
+		}
+
+		users = append(users, &user)
+	}
+
+	return &UsersCollection{
+		Data:       users,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
+
+}
+
+type DashboardCardPayload struct {
+	InventoryCount                int32   `json:"inventory_count"`
+	UserCount                     int32   `json:"user_count"`
+	UsersJoinedToday              int32   `json:"users_joined_today"`
+	InventoryCreatedToday         int32   `json:"inventory_created_today"`
+	FreeSubscriptionCount         int32   `json:"free_subscription_count"`
+	PaidSubscriptionCount         int32   `json:"paid_subscription_count"`
+	AmountMadeOnSubscriptionToday float64 `json:"amount_made_on_subscription_today"`
+	AmountMadeOnSubscriptionTotal float64 `json:"amount_made_on_subscription_total"`
+}
+
+func (u *PostgresRepository) AdminGetDashboardCard(ctx context.Context) (*DashboardCardPayload, error) {
+
+	var totalInventoryRows int32
+
+	// Query to count total rows
+	countInventoryQuery := "SELECT COUNT(*) FROM inventories"
+	row := u.Conn.QueryRowContext(ctx, countInventoryQuery)
+
+	if err := row.Scan(&totalInventoryRows); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+
+	var totalUserRows int32
+	countUserQuery := "SELECT COUNT(*) FROM users"
+	row = u.Conn.QueryRowContext(ctx, countUserQuery)
+
+	if err := row.Scan(&totalUserRows); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+
+	var totalUserRowsCreatedToday int32
+	countUserQueryCreatedToday := "SELECT COUNT(*) FROM users WHERE created_at::date = CURRENT_DATE"
+	row = u.Conn.QueryRowContext(ctx, countUserQueryCreatedToday)
+
+	if err := row.Scan(&totalUserRowsCreatedToday); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+	var totalInventoryRowsCreatedToday int32
+
+	// Query to count total rows
+	countInventoryQueryCreatedToday := "SELECT COUNT(*) FROM inventories WHERE created_at::date = CURRENT_DATE"
+	row = u.Conn.QueryRowContext(ctx, countInventoryQueryCreatedToday)
+
+	if err := row.Scan(&totalInventoryRowsCreatedToday); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+	var totalFreeSubRows int32
+	countFreeSubRowsQuery := "SELECT COUNT(*) FROM user_subscriptions where status = $1"
+	row = u.Conn.QueryRowContext(ctx, countFreeSubRowsQuery, "free")
+
+	if err := row.Scan(&totalFreeSubRows); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+	var totalPaidSubRows int32
+	countPaidRowsQuery := "SELECT COUNT(*) FROM user_subscriptions where status = $1"
+	row = u.Conn.QueryRowContext(ctx, countPaidRowsQuery, "active")
+
+	if err := row.Scan(&totalPaidSubRows); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+	var totalAmountMadeOnSubToday float64
+	countTotalAmountMadeOnSubToday := "SELECT COALESCE(SUM(amount), 0) FROM user_subscription_histories WHERE created_at::date = CURRENT_DATE"
+	row = u.Conn.QueryRowContext(ctx, countTotalAmountMadeOnSubToday)
+
+	if err := row.Scan(&totalAmountMadeOnSubToday); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+	var totalAmountMadeOnSubOverall float64
+	countTotalAmountMadeOnSubOverall := "SELECT COALESCE(SUM(amount), 0) FROM user_subscription_histories"
+	row = u.Conn.QueryRowContext(ctx, countTotalAmountMadeOnSubOverall)
+
+	if err := row.Scan(&totalAmountMadeOnSubOverall); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	return &DashboardCardPayload{
+		InventoryCount:                totalInventoryRows,
+		UserCount:                     totalUserRows,
+		UsersJoinedToday:              totalUserRowsCreatedToday,
+		InventoryCreatedToday:         totalInventoryRowsCreatedToday,
+		FreeSubscriptionCount:         totalFreeSubRows,
+		PaidSubscriptionCount:         totalPaidSubRows,
+		AmountMadeOnSubscriptionToday: totalAmountMadeOnSubToday,
+		AmountMadeOnSubscriptionTotal: totalAmountMadeOnSubOverall,
+	}, nil
+
+}
+
+func (u *PostgresRepository) AdminGetAmountMadeByDate(ctx context.Context, date string) (float64, error) {
+
+	var amount float64
+	amountQuery := "SELECT COALESCE(SUM(amount), 0) FROM user_subscription_histories WHERE created_at::date = $1"
+	row := u.Conn.QueryRowContext(ctx, amountQuery, date)
+
+	if err := row.Scan(&amount); err != nil {
+		return 0.0, err
+	}
+
+	return amount, nil
+}
+
+func (u *PostgresRepository) AdminGetUsersJoinedByDate(ctx context.Context, date string) (int32, error) {
+	var count int32
+	countQuery := "SELECT COUNT(*) FROM users  WHERE created_at::date = $1"
+	row := u.Conn.QueryRowContext(ctx, countQuery, date)
+
+	if err := row.Scan(&count); err != nil {
+		return 0.0, err
+	}
+
+	return count, nil
+}
+
+func (u *PostgresRepository) AdminGetInventoryCreatedByDate(ctx context.Context, date string) (int32, error) {
+	var count int32
+	countQuery := "SELECT COUNT(*) FROM inventories  WHERE created_at::date = $1"
+	row := u.Conn.QueryRowContext(ctx, countQuery, date)
+
+	if err := row.Scan(&count); err != nil {
+		return 0.0, err
+	}
+
+	return count, nil
+}
+
+type RegistrationStatsResponse struct {
+	Label string `json:"label"` // e.g. "2023-01-01" or "Jan 2023" or "2023"
+	Count int    `json:"count"`
+}
+
+type RegistrationStatsRequest struct {
+	GroupBy   string // "day", "month", or "year"
+	StartDate string // e.g. "2023-01-01"
+	EndDate   string // e.g. "2023-12-31"
+}
+
+func (r *PostgresRepository) GetUserRegistrationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error) {
+	log.Println(req, "Request body")
+
+	// Struct to hold both label and sort format
+	type GroupByConfig struct {
+		Label   string
+		SortKey string
+	}
+
+	// Mapping group types to their label and sort format
+	validGroups := map[string]GroupByConfig{
+		"day": {
+			Label:   "TO_CHAR(created_at, 'YYYY-MM-DD')",
+			SortKey: "DATE_TRUNC('day', created_at)",
+		},
+		"month": {
+			Label:   "TO_CHAR(created_at, 'Mon YYYY')",
+			SortKey: "DATE_TRUNC('month', created_at)",
+		},
+		"year": {
+			Label:   "TO_CHAR(created_at, 'YYYY')",
+			SortKey: "DATE_TRUNC('year', created_at)",
+		},
+	}
+
+	// Validate groupBy option
+	groupByConfig, ok := validGroups[req.GroupBy]
+	if !ok {
+		return nil, fmt.Errorf("invalid groupBy value: %s", req.GroupBy)
+	}
+
+	// Validate and parse dates
+	if req.StartDate == "" || req.EndDate == "" {
+		return nil, fmt.Errorf("startDate and endDate are required")
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid startDate: %w", err)
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endDate: %w", err)
+	}
+	endDate = endDate.AddDate(0, 0, 1) // make endDate exclusive
+
+	// Construct the SQL query with label and sort_key
+	sqlQuery := fmt.Sprintf(`
+		SELECT
+			%s AS label,
+			%s AS sort_key,
+			COUNT(*) AS count
+		FROM users
+		WHERE created_at >= $1 AND created_at < $2
+		GROUP BY label, sort_key
+		ORDER BY sort_key ASC
+	`, groupByConfig.Label, groupByConfig.SortKey)
+
+	rows, err := r.Conn.QueryContext(ctx, sqlQuery, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []RegistrationStatsResponse
+	for rows.Next() {
+		var res RegistrationStatsResponse
+		var sortKey time.Time // Used only for sorting in SQL
+		if err := rows.Scan(&res.Label, &sortKey, &res.Count); err != nil {
+			return nil, fmt.Errorf("scan row failed: %w", err)
+		}
+		results = append(results, res)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (r *PostgresRepository) GetInventoryCreationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error) {
+	log.Println(req, "Request body")
+
+	// Struct to hold both label and sort format
+	type GroupByConfig struct {
+		Label   string
+		SortKey string
+	}
+
+	// Mapping group types to their label and sort format
+	validGroups := map[string]GroupByConfig{
+		"day": {
+			Label:   "TO_CHAR(created_at, 'YYYY-MM-DD')",
+			SortKey: "DATE_TRUNC('day', created_at)",
+		},
+		"month": {
+			Label:   "TO_CHAR(created_at, 'Mon YYYY')",
+			SortKey: "DATE_TRUNC('month', created_at)",
+		},
+		"year": {
+			Label:   "TO_CHAR(created_at, 'YYYY')",
+			SortKey: "DATE_TRUNC('year', created_at)",
+		},
+	}
+
+	// Validate groupBy option
+	groupByConfig, ok := validGroups[req.GroupBy]
+	if !ok {
+		return nil, fmt.Errorf("invalid groupBy value: %s", req.GroupBy)
+	}
+
+	// Validate and parse dates
+	if req.StartDate == "" || req.EndDate == "" {
+		return nil, fmt.Errorf("startDate and endDate are required")
+	}
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid startDate: %w", err)
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endDate: %w", err)
+	}
+	endDate = endDate.AddDate(0, 0, 1) // make endDate exclusive
+
+	// Construct the SQL query with label and sort_key
+	sqlQuery := fmt.Sprintf(`
+		SELECT
+			%s AS label,
+			%s AS sort_key,
+			COUNT(*) AS count
+		FROM inventories
+		WHERE created_at >= $1 AND created_at < $2
+		GROUP BY label, sort_key
+		ORDER BY sort_key ASC
+	`, groupByConfig.Label, groupByConfig.SortKey)
+
+	rows, err := r.Conn.QueryContext(ctx, sqlQuery, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []RegistrationStatsResponse
+	for rows.Next() {
+		var res RegistrationStatsResponse
+		var sortKey time.Time // Used only for sorting in SQL
+		if err := rows.Scan(&res.Label, &sortKey, &res.Count); err != nil {
+			return nil, fmt.Errorf("scan row failed: %w", err)
+		}
+		results = append(results, res)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+type SubscriptionStatsRequest struct {
+	GroupBy   string // "day", "month", or "year"
+	StartDate string // e.g., "2025-01-01"
+	EndDate   string // e.g., "2025-12-31"
+}
+
+type SubscriptionStatsResponse struct {
+	Label  string  `json:"label"`  // e.g., "Jan 2025"
+	Amount float64 `json:"amount"` // Sum of subscription amounts
+}
+
+func (r *PostgresRepository) GetSubscriptionAmountStats(ctx context.Context, req SubscriptionStatsRequest) ([]SubscriptionStatsResponse, error) {
+
+	// Grouping logic
+	type GroupByConfig struct {
+		Label   string
+		SortKey string
+	}
+	validGroups := map[string]GroupByConfig{
+		"day": {
+			Label:   "TO_CHAR(created_at, 'YYYY-MM-DD')",
+			SortKey: "DATE_TRUNC('day', created_at)",
+		},
+		"month": {
+			Label:   "TO_CHAR(created_at, 'Mon YYYY')",
+			SortKey: "DATE_TRUNC('month', created_at)",
+		},
+		"year": {
+			Label:   "TO_CHAR(created_at, 'YYYY')",
+			SortKey: "DATE_TRUNC('year', created_at)",
+		},
+	}
+
+	groupByConfig, ok := validGroups[req.GroupBy]
+	if !ok {
+		return nil, fmt.Errorf("invalid groupBy value: %s", req.GroupBy)
+	}
+
+	// Parse and validate dates
+	if req.StartDate == "" || req.EndDate == "" {
+		return nil, fmt.Errorf("startDate and endDate are required")
+	}
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid startDate: %w", err)
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endDate: %w", err)
+	}
+	endDate = endDate.AddDate(0, 0, 1) // Make endDate exclusive
+
+	// Build query
+	sqlQuery := fmt.Sprintf(`
+		SELECT
+			%s AS label,
+			%s AS sort_key,
+			COALESCE(SUM(amount), 0) AS total_amount
+		FROM user_subscription_histories
+		WHERE created_at >= $1 AND created_at < $2
+		GROUP BY label, sort_key
+		ORDER BY sort_key ASC
+	`, groupByConfig.Label, groupByConfig.SortKey)
+
+	rows, err := r.Conn.QueryContext(ctx, sqlQuery, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []SubscriptionStatsResponse
+	for rows.Next() {
+		var res SubscriptionStatsResponse
+		var sortKey time.Time // Used for ordering
+		if err := rows.Scan(&res.Label, &sortKey, &res.Amount); err != nil {
+			return nil, fmt.Errorf("scan row failed: %w", err)
+		}
+		results = append(results, res)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }

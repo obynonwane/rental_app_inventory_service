@@ -6782,6 +6782,9 @@ func (u *PostgresRepository) GetBusinesses(ctx context.Context, detail AdminGetB
 		// add this booking to slice
 		bk.Plan = &plan
 		bk.User = &user
+		bk.Country = &country
+		bk.State = &state
+		bk.Lga = &lga
 
 		if shopBanner.Valid {
 			bk.ShopBanner = shopBanner.String

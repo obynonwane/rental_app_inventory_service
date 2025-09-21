@@ -373,3 +373,38 @@ func (app *Config) GetSubscriptionAmountStats(w http.ResponseWriter, r *http.Req
 
 	app.writeJSON(w, http.StatusAccepted, payload)
 }
+
+func (app *Config) GetBusinesses(w http.ResponseWriter, r *http.Request) {
+
+	//extract the request body
+	var requestPayload data.AdminGetBusinessPayload
+	err := app.readJSON(w, r, &requestPayload)
+	if err != nil {
+		log.Printf("%v", err)
+		app.errorJSON(w, err, nil)
+		return
+	}
+
+	// Extract the context from the incoming HTTP request
+	ctx := r.Context()
+
+	data, err := app.Repo.GetBusinesses(ctx, requestPayload)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			app.errorJSON(w, errors.New("no record found"), nil, http.StatusBadRequest)
+			return
+		}
+
+		app.errorJSON(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+
+	payload := jsonResponse{
+		Error:      false,
+		StatusCode: http.StatusAccepted,
+		Message:    "data retrieved successfully",
+		Data:       data,
+	}
+
+	app.writeJSON(w, http.StatusAccepted, payload)
+}

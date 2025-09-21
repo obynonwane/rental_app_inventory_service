@@ -88,4 +88,5 @@ type Repository interface {
 	GetUserRegistrationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error)
 	GetInventoryCreationStats(ctx context.Context, req RegistrationStatsRequest) ([]RegistrationStatsResponse, error)
 	GetSubscriptionAmountStats(ctx context.Context, req SubscriptionStatsRequest) ([]SubscriptionStatsResponse, error)
+	GetBusinesses(ctx context.Context, detail AdminGetBusinessPayload) (*AdminGetBusinnessCollection, error)
 }

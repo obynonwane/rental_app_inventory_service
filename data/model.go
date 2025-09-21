@@ -6196,6 +6196,7 @@ type DashboardCardPayload struct {
 	PaidSubscriptionCount         int32   `json:"paid_subscription_count"`
 	AmountMadeOnSubscriptionToday float64 `json:"amount_made_on_subscription_today"`
 	AmountMadeOnSubscriptionTotal float64 `json:"amount_made_on_subscription_total"`
+	BusinessCountOnLendora        int32   `json:"business_count_on_lendora"`
 }
 
 func (u *PostgresRepository) AdminGetDashboardCard(ctx context.Context) (*DashboardCardPayload, error) {
@@ -6277,6 +6278,17 @@ func (u *PostgresRepository) AdminGetDashboardCard(ctx context.Context) (*Dashbo
 		return &DashboardCardPayload{}, err
 	}
 
+	//====================================================================================================
+	var totalBusinessCount int32
+	countBusinessQuery := "SELECT COUNT(*) FROM business_kycs"
+	row = u.Conn.QueryRowContext(ctx, countBusinessQuery)
+
+	if err := row.Scan(&totalBusinessCount); err != nil {
+		return &DashboardCardPayload{}, err
+	}
+
+	//====================================================================================================
+
 	return &DashboardCardPayload{
 		InventoryCount:                totalInventoryRows,
 		UserCount:                     totalUserRows,
@@ -6286,6 +6298,7 @@ func (u *PostgresRepository) AdminGetDashboardCard(ctx context.Context) (*Dashbo
 		PaidSubscriptionCount:         totalPaidSubRows,
 		AmountMadeOnSubscriptionToday: totalAmountMadeOnSubToday,
 		AmountMadeOnSubscriptionTotal: totalAmountMadeOnSubOverall,
+		BusinessCountOnLendora:        totalBusinessCount,
 	}, nil
 
 }
@@ -6585,4 +6598,227 @@ func (r *PostgresRepository) GetSubscriptionAmountStats(ctx context.Context, req
 	}
 
 	return results, nil
+}
+
+type AdminGetBusinessPayload struct {
+	Page  int32 `json:"page"`
+	Limit int32 `json:"limit"`
+}
+
+// func (r *PostgresRepository) GetBusinesses(ctx context.Context, detail AdminGetBusinessPayload) ([]BusinessKyc, error) {
+
+// }
+
+type AdminGetBusinnessCollection struct {
+	Data       []BusinessKyc
+	TotalCount int32
+	Offset     int32
+	Limit      int32
+}
+
+func (u *PostgresRepository) GetBusinesses(ctx context.Context, detail AdminGetBusinessPayload) (*AdminGetBusinnessCollection, error) {
+
+	offset := (detail.Page - 1) * detail.Limit // Calculate offset
+
+	var totalRows int32 // Variable to hold the total count
+
+	// Query to count total rows
+	countQuery := "SELECT COUNT(*) FROM business_kycs"
+
+	row := u.Conn.QueryRowContext(ctx, countQuery)
+
+	if err := row.Scan(&totalRows); err != nil {
+		return nil, err
+	}
+
+	// Query user bookings
+
+	query := `SELECT 
+				bk.id,
+				bk.display_name,
+				bk.description,
+				bk.address,
+				bk.cac_number,
+				bk.key_bonus,
+				bk.business_registered,
+				bk.verified,
+				bk.active_plan,
+				bk.shop_banner,
+				bk.industries,
+				bk.subdomain,
+				bk.country_id,
+				bk.state_id,   
+				bk.lga_id,
+				bk.created_at,
+				bk.updated_at,
+
+				c.id,
+				c.name,
+				c.created_at,
+				c.updated_at,
+
+				s.id,
+				s.name,
+				s.created_at,
+				s.updated_at,
+
+
+				l.id,
+				l.name,
+				l.created_at,
+				l.updated_at,
+
+				p.id,
+				p.name,
+				p.monthly_price,
+				p.annual_price,
+				p.created_at,
+				p.updated_at,
+
+
+    
+				u.id,
+				u.first_name,
+				u.last_name,
+				u.email,
+				u.phone,
+				u.created_at,
+				u.updated_at
+
+
+				FROM business_kycs bk
+				LEFT JOIN plans p ON bk.plan_id = p.id
+				LEFT JOIN users u ON bk.user_id = u.id
+				LEFT JOIN countries c ON bk.country_id = c.id
+				LEFT JOIN states s ON bk.state_id = s.id
+				LEFT JOIN lgas l ON bk.lga_id = l.id
+				ORDER BY bk.created_at DESC
+				LIMIT $1 OFFSET $2`
+
+	// stmt.QueryRowContext
+	rows, err := u.Conn.QueryContext(ctx, query, detail.Limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var businesses []BusinessKyc
+
+	for rows.Next() {
+
+		var (
+			bk      BusinessKyc
+			plan    Plan
+			user    User
+			country Country
+			state   State
+			lga     Lga
+
+			shopBanner      sql.NullString
+			shopIndustry    sql.NullString
+			shopDomain      sql.NullString
+			shopDescription sql.NullString
+			shopBonus       sql.NullString
+		)
+
+		if err := rows.Scan(
+
+			&bk.ID,
+			&bk.DisplayName,
+			&shopDescription,
+			// &bk.Description,
+			&bk.Address,
+			&bk.CacNumber,
+			&shopBonus,
+			// &bk.KeyBonus,
+			&bk.BusinessRegistered,
+			&bk.Verified,
+			&bk.ActivePlan,
+			&shopBanner,
+			// &bk.ShopBanner,
+			&shopIndustry,
+			// &bk.Industries,
+			&shopDomain,
+			// &bk.Subdomain,
+			&bk.CountryID,
+			&bk.StateID,
+			&bk.LgaID,
+			&bk.CreatedAt,
+			&bk.UpdatedAt,
+
+			&country.ID,
+			&country.Name,
+			&country.CreatedAt,
+			&country.UpdatedAt,
+
+			&state.ID,
+			&state.Name,
+			&state.CreatedAt,
+			&state.UpdatedAt,
+
+			&lga.ID,
+			&lga.Name,
+			&lga.CreatedAt,
+			&lga.UpdatedAt,
+
+			&plan.ID,
+			&plan.Name,
+			&plan.MonthlyPrice,
+			&plan.AnnualPrice,
+			&plan.CreatedAt,
+			&plan.UpdatedAt,
+
+			&user.ID,
+			&user.FirstName,
+			&user.LastName,
+			&user.Email,
+			&user.Phone,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		// add this booking to slice
+		bk.Plan = &plan
+		bk.User = &user
+
+		if shopBanner.Valid {
+			bk.ShopBanner = shopBanner.String
+		} else {
+			bk.ShopBanner = ""
+		}
+
+		if shopIndustry.Valid {
+			bk.Industries = shopIndustry.String
+		} else {
+			bk.Industries = ""
+		}
+		if shopDomain.Valid {
+			bk.Subdomain = shopDomain.String
+		} else {
+			bk.Subdomain = ""
+		}
+
+		if shopDescription.Valid {
+			bk.Description = shopDescription.String
+		} else {
+			bk.Description = ""
+		}
+
+		if shopBonus.Valid {
+			bk.KeyBonus = shopBonus.String
+		} else {
+			bk.KeyBonus = ""
+		}
+
+		businesses = append(businesses, bk)
+	}
+
+	return &AdminGetBusinnessCollection{
+		Data:       businesses,
+		TotalCount: totalRows,
+		Offset:     offset,
+		Limit:      detail.Limit,
+	}, nil
 }
